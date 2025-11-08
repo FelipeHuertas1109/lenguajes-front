@@ -1,36 +1,175 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Lenguajes Front - Regex to DFA
 
-## Getting Started
+Proyecto Next.js que implementa un endpoint para convertir expresiones regulares a autómatas finitos deterministas (DFA) usando arquitectura limpia.
 
-First, run the development server:
+## Arquitectura
+
+El proyecto sigue los principios de **Arquitectura Limpia** (Clean Architecture) con las siguientes capas:
+
+```
+src/
+├── domain/           # Capa de Dominio
+│   └── entities/     # Entidades del negocio (State, Transition, NFA, DFA)
+├── application/      # Capa de Aplicación
+│   └── use-cases/    # Casos de uso (RegexToDFAUseCase)
+├── infrastructure/   # Capa de Infraestructura
+│   ├── nfa/          # Algoritmo de Thompson (Regex → NFA)
+│   ├── dfa/          # Construcción de subconjuntos (NFA → DFA)
+│   └── regex/        # Parser de expresiones regulares
+└── presentation/     # Capa de Presentación
+    └── app/api/      # API Routes de Next.js
+```
+
+## Endpoint: Regex to DFA
+
+### URL
+`/api/regex-to-dfa/`
+
+### Métodos
+- `GET`: Parámetros en query string
+- `POST`: Parámetros en body JSON
+
+### Uso
+
+#### GET Request
+
+```bash
+# Convertir una expresión regular a DFA
+curl "http://localhost:3000/api/regex-to-dfa/?regex=a*b"
+
+# Convertir y probar una cadena
+curl "http://localhost:3000/api/regex-to-dfa/?regex=a*b&test=aaab"
+```
+
+#### POST Request
+
+```bash
+# Convertir una expresión regular
+curl -X POST http://localhost:3000/api/regex-to-dfa/ \
+  -H "Content-Type: application/json" \
+  -d '{"regex": "a*b"}'
+
+# Convertir y probar una cadena
+curl -X POST http://localhost:3000/api/regex-to-dfa/ \
+  -H "Content-Type: application/json" \
+  -d '{"regex": "a*b", "test": "aaab"}'
+```
+
+### Respuesta
+
+```json
+{
+  "success": true,
+  "regex": "a*b",
+  "dfa": {
+    "alphabet": ["a", "b"],
+    "states": ["S0", "S1", "S2"],
+    "start": "S0",
+    "accepting": ["S2"],
+    "transitions": [
+      {"from": "S0", "symbol": "a", "to": "S1"},
+      {"from": "S0", "symbol": "b", "to": "S2"},
+      {"from": "S1", "symbol": "a", "to": "S1"},
+      {"from": "S1", "symbol": "b", "to": "S2"}
+    ]
+  },
+  "test_result": {
+    "string": "aaab",
+    "accepted": true
+  },
+  "error": null
+}
+```
+
+### Características
+
+- ✅ Soporte para expresiones regulares estándar: `*`, `+`, `?`, `|`, `.`, `()`, y caracteres escapados con `\`
+- ✅ Conversión automática de Regex → NFA (Thompson) → DFA (Subconjuntos)
+- ✅ Opción de probar cadenas contra el DFA generado
+- ✅ Respuestas en formato JSON estructurado
+- ✅ Manejo de errores con mensajes descriptivos
+
+### Ejemplos de Expresiones Regulares
+
+- `a*b` - Cero o más 'a' seguidas de 'b'
+- `(a|b)*` - Cualquier combinación de 'a' y 'b'
+- `a+b` - Una o más 'a' seguidas de 'b'
+- `a?b` - Opcionalmente 'a' seguida de 'b'
+- `a\.b` - Literal 'a.b' (el punto está escapado)
+
+## Algoritmos Implementados
+
+### 1. Algoritmo de Thompson
+Convierte una expresión regular en un autómata finito no determinista (NFA) usando el algoritmo de construcción de Thompson.
+
+### 2. Construcción de Subconjuntos
+Convierte un NFA en un DFA usando el algoritmo de construcción de subconjuntos (subset construction).
+
+## Desarrollo
+
+### Instalación
+
+```bash
+npm install
+```
+
+### Ejecutar en desarrollo
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+El servidor estará disponible en `http://localhost:3000`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Construcción
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+```
 
-## Learn More
+### Ejecutar en producción
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm start
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Variables de Entorno
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Crea un archivo `.env.local` con:
 
-## Deploy on Vercel
+```env
+BASE_URL=http://localhost:3000
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Tecnologías
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Next.js 16** - Framework de React
+- **TypeScript** - Tipado estático
+- **Tailwind CSS** - Estilos
+
+## Estructura de Archivos
+
+```
+.
+├── app/
+│   ├── api/
+│   │   └── regex-to-dfa/
+│   │       └── route.ts          # API Route
+│   ├── layout.tsx
+│   └── page.tsx
+├── src/
+│   ├── domain/
+│   │   └── entities/             # Entidades del dominio
+│   ├── application/
+│   │   └── use-cases/            # Casos de uso
+│   └── infrastructure/
+│       ├── nfa/                  # Algoritmo de Thompson
+│       ├── dfa/                  # Construcción de subconjuntos
+│       └── regex/                # Parser de regex
+├── package.json
+└── README.md
+```
+
+## Licencia
+
+MIT

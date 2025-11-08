@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimizar AFD</title>
+    <!-- Enlace a Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+
+        .container {
+            max-width: 600px;
+            padding: 20px;
+            margin-top: 40px;
+        }
+
+        h1 {
+            font-weight: 500;
+            font-size: 1.5rem;
+            text-align: center;
+            color: #444;
+        }
+
+        .card {
+            border: none;
+            border-radius: 10px;
+            background-color: #fff;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .card-header {
+            font-weight: 500;
+            font-size: 1.25rem;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .form-control, .btn {
+            border-radius: 5px;
+            box-shadow: none;
+        }
+
+        .btn {
+            font-weight: 500;
+            padding: 8px 16px;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .btn:hover {
+            opacity: 0.85;
+        }
+
+        .btn-primary {
+            background-color: #5A67D8;
+            border: none;
+            font-size: 0.9rem;
+            padding: 10px;
+            border-radius: 5px;
+            width: 100%;
+            max-width: 150px;
+        }
+
+        .btn-primary:hover {
+            background-color: #4C51BF;
+            opacity: 0.9;
+        }
+
+        .btn-danger {
+            background-color: #E53E3E;
+            border: none;
+        }
+
+        table {
+            width: 100%;
+        }
+
+        .automata-container {
+            height: 300px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Minimizar AFD</h1>
+
+    <!-- Sección para agregar estados -->
+    <div class="card">
+        <div class="card-header">
+            Definir Estados
+        </div>
+        <div class="card-body">
+            <form class="row g-3">
+                <div class="col-8">
+                    <input type="text" class="form-control" id="newStateName" placeholder="Nombre del estado (opcional)">
+                </div>
+                <div class="col-4">
+                    <button type="button" class="btn btn-primary w-100" onclick="addState(), generateFinalStatesCheckboxes()">Agregar</button>
+                </div>
+            </form>
+            <div class="table-responsive mt-3">
+                <table id="statesTable" class="table table-hover table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Estado</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Los estados se agregarán aquí dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Selección del estado inicial y final -->
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header text-center bg-light">
+                    <h5 class="mb-0">Estado Inicial</h5>
+                </div>
+                <div class="card-body text-center">
+                    <select id="initialStateSelect" class="form-select form-select-lg mb-2">
+                        <!-- Las opciones del estado inicial se añadirán dinámicamente -->
+                    </select>
+                </div>
+            </div>
+        </div>
+    
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header text-center bg-light">
+                    <h5 class="mb-0">Estados Finales</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row" id="finalStatesCheckboxes">
+                        <!-- Aquí se generarán los checkboxes dinámicamente -->
+                    </div>
+                </div>
+            </div>
+        </div>              
+    </div>
+
+    <!-- Sección para agregar transiciones -->
+    <div class="card mt-4">
+        <div class="card-header">
+            Definir Transiciones
+        </div>
+        <div class="card-body">
+            <form class="row g-3">
+                <div class="col-4">
+                    <select id="newTransitionFrom" class="form-select">
+                        <option value="">Estado origen</option>
+                    </select>
+                </div>
+                <div class="col-4">
+                    <select id="newTransitionTo" class="form-select">
+                        <option value="">Estado destino</option>
+                    </select>
+                </div>
+                <div class="col-4">
+                    <input type="text" class="form-control" id="newTransitionSymbol" placeholder="Símbolo de transición">
+                </div>
+            </form>
+            <button class="btn btn-secondary mt-3 w-100" onclick="addTransition()">Agregar Transición</button>
+            <div class="table-responsive mt-3">
+                <table id="transitionsTable" class="table table-hover table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Desde</th>
+                            <th>Hacia</th>
+                            <th>Símbolo</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Las transiciones se agregarán aquí dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Botón para minimizar AFD -->
+    <button class="btn btn-success w-100 mt-4" onclick="minimizeAFD()">Minimizar AFD</button>
+
+    <!-- Mostrar AFD Inicial -->
+    <div class="card mt-4">
+        <div class="card-header">AFD Inicial</div>
+        <div class="card-body automata-container">
+            <svg id="initialAFD"></svg>
+        </div>
+    </div>
+
+    <!-- Mostrar tabla de particiones -->
+    <div class="card mt-4">
+        <div class="card-header">Tabla de Particiones</div>
+        <div class="card-body">
+            <div id="partitionsTable">
+                <!-- Aquí se generará dinámicamente la tabla de particiones -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Mostrar AFD Minimizado -->
+    <div class="card mt-4">
+        <div class="card-header">AFD Minimizado</div>
+        <div class="card-body automata-container">
+            <svg id="minimizedAFD"></svg>
+        </div>
+    </div>
+</div>
+
+<!-- Enlace a Bootstrap 5 JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/viz.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/full.render.js"></script>
+<script src="https://d3js.org/d3.v5.min.js"></script>
+
+<!-- Enlace a tu archivo JavaScript -->
+<script src="js/minimizeAFD.js"></script>
+</body>
+</html>

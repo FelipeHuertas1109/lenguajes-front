@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regex to Automata Converter</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Usa jQuery v3.6.0 (solo una vez) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- Usa D3.js v5 -->
+<script src="https://d3js.org/d3.v5.min.js"></script>
+
+    <!-- Usa dagre-d3 v0.6.4 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre-d3/0.6.4/dagre-d3.min.js"></script>
+    <script src="js/regexToNfaWithoutLambda.js"></script>
+    <script src="js/regexToNfa.js"></script>
+    <script src="js/nfaToDfa.js"></script>
+    <script src="js/genAutomataSVG.js"></script>
+    <script src="js/parseRegex.js"></script>
+    <style>
+        .result-box {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            min-height: 200px;
+        }
+
+        .graph-svg {
+            border: 1px solid #ddd;
+        }
+
+        svg {
+            width: 100%;
+            height: auto;
+        }
+
+        .edgePath path {
+            stroke: #333;
+            stroke-width: 1.5px;
+        }
+
+        .edgeLabel {
+            font-size: 12px;
+            background-color: #fff;
+        }
+
+        .node rect,
+        .node circle,
+        .node ellipse {
+            stroke: #333;
+            fill: #fff;
+            stroke-width: 1.5px;
+        }
+    </style>
+</head>
+<body>
+    <!---Boton para regresar a la pagina principal--->
+    <a href="index.html" class="btn btn-primary">AFND to REGEX</a>
+    <div class="container mt-5">
+        <h1 class="text-center">Conversor de Expresiones Regulares a AFND-λ, AFND y AFD</h1>
+        <form id="regex-form" class="mt-4">
+            <div class="mb-3">
+                <label for="regex" class="form-label">Ingresa una expresión regular:</label>
+                <input type="text" class="form-control" id="regex" placeholder="Ejemplo: a(b|c)*">
+            </div>
+            <button type="submit" class="btn btn-primary">Convertir</button>
+        </form>
+
+        <div id="result" class="mt-5">
+            <h2 class="text-center">Visualizaciones de Autómatas</h2>
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <h4 class="text-center">Autómata Finito No Determinista con Lambda (AFND-λ)</h4>
+                    <svg id="afnd-lambda-svg" class="graph-svg">
+                        <g></g>
+                    </svg>
+                </div>
+                <div class="col-md-6">
+                    <h4 class="text-center">Autómata Finito No Determinista (AFND)</h4>
+                    <svg id="afnd-svg" class="graph-svg">
+                        <g></g>
+                    </svg>
+                </div>
+                <div class="col-md-6">
+                    <h4 class="text-center">Autómata Finito Determinista (AFD)</h4>
+                    <svg id="afd-svg" class="graph-svg">
+                        <g></g>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            $('#regex-form').on('submit', function (e) {
+                e.preventDefault();
+                const regex = $('#regex').val();
+
+                if (regex) {
+                    try {
+                        // 1. Convertir la expresión regular a AFND con λ (AFND-λ)
+                        const nfaLambda = regexToNfa(regex);
+                        // Visualizar el AFND-λ
+                        genAutomataSVG("#afnd-lambda-svg", nfaLambda);
+
+                        // 2. Convertir la expresión regular a AFND sin λ
+                        const nfaWithoutLambda = regexToNfaWithoutLambda(regex);
+                        // Visualizar el AFND sin λ
+                        genAutomataSVG("#afnd-svg", nfaWithoutLambda);
+
+                        // 3. Convertir el AFND sin λ a AFD
+                        const dfa = nfaToDfa(nfaLambda);
+                        // Visualizar el AFD
+                        genAutomataSVG("#afd-svg", dfa);
+                    } catch (error) {
+                        alert("Error: " + error);
+                    }
+                } else {
+                    alert('Por favor, ingresa una expresión regular.');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
