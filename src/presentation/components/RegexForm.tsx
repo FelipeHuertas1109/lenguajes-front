@@ -16,6 +16,7 @@ interface DFAData {
 
 interface RegexFormProps {
   onResult: (data: {
+    regex: string;
     dfa: DFAData | null;
     testResult: { string: string; accepted: boolean } | null;
     error: string | null;
@@ -44,6 +45,7 @@ export default function RegexForm({ onResult }: RegexFormProps) {
 
       if (data.success) {
         onResult({
+          regex: regex,
           dfa: data.dfa,
           testResult: data.test_result,
           error: null,
@@ -51,6 +53,7 @@ export default function RegexForm({ onResult }: RegexFormProps) {
       } else {
         setError(data.error || "Error al procesar la expresión regular");
         onResult({
+          regex: regex,
           dfa: null,
           testResult: null,
           error: data.error,
@@ -61,6 +64,7 @@ export default function RegexForm({ onResult }: RegexFormProps) {
         err instanceof Error ? err.message : "Error de conexión";
       setError(errorMessage);
       onResult({
+        regex: regex,
         dfa: null,
         testResult: null,
         error: errorMessage,

@@ -66,29 +66,84 @@ export default function DFAVisualizer({ dfa }: DFAVisualizerProps) {
         position: { x, y },
         data: {
           label: (
-            <div className="flex items-center justify-center">
-              <div className="relative">
-                <div
-                  className={`px-4 py-2 rounded-full font-semibold text-sm shadow-md ${
-                    isAccepting
-                      ? "bg-gradient-to-br from-green-500 to-green-600 text-white ring-2 ring-green-300"
-                      : "bg-gradient-to-br from-blue-500 to-blue-600 text-white"
-                  }`}
-                >
-                  {stateId}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              width: '100%', 
+              height: '100%' 
+            }}>
+              {isAccepting ? (
+                // Estado de aceptación: círculo doble (dos círculos concéntricos)
+                <div style={{ 
+                  position: 'relative', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  width: '70px',
+                  height: '70px'
+                }}>
+                  {/* Círculo exterior */}
+                  <div style={{
+                    position: 'absolute',
+                    width: '70px',
+                    height: '70px',
+                    borderRadius: '50%',
+                    border: '3px solid #3b82f6',
+                    backgroundColor: 'transparent'
+                  }}></div>
+                  {/* Círculo interior */}
+                  <div style={{
+                    position: 'relative',
+                    width: '50px',
+                    height: '50px',
+                    borderRadius: '50%',
+                    border: '2px solid #3b82f6',
+                    backgroundColor: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                  }}>
+                    <span style={{ 
+                      fontSize: '12px', 
+                      fontWeight: 'bold', 
+                      color: '#1f2937' 
+                    }}>
+                      {stateId}
+                    </span>
+                  </div>
                 </div>
-                {isAccepting && (
-                  <div className="absolute -right-1 -top-1 w-3 h-3 bg-green-400 rounded-full ring-2 ring-white"></div>
-                )}
-              </div>
+              ) : (
+                // Estado normal: círculo simple
+                <div style={{
+                  width: '50px',
+                  height: '50px',
+                  borderRadius: '50%',
+                  border: '2px solid #94a3b8',
+                  backgroundColor: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}>
+                  <span style={{ 
+                    fontSize: '12px', 
+                    fontWeight: 'bold', 
+                    color: '#1f2937' 
+                  }}>
+                    {stateId}
+                  </span>
+                </div>
+              )}
             </div>
           ),
         },
         style: {
           background: "transparent",
           border: "none",
-          width: 100,
-          height: 60,
+          width: isAccepting ? 80 : 60,
+          height: isAccepting ? 80 : 60,
         },
       };
     });
@@ -286,10 +341,10 @@ export default function DFAVisualizer({ dfa }: DFAVisualizerProps) {
 
       {/* Indicador de estados finales */}
       {dfa.accepting.length > 0 && (
-        <div className="absolute top-4 right-4 z-10 bg-green-100 border border-green-300 rounded-lg px-3 py-2 shadow-sm">
+        <div className="absolute top-4 right-4 z-10 bg-blue-100 border border-blue-300 rounded-lg px-3 py-2 shadow-sm">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-green-500 rounded-full ring-2 ring-green-300"></div>
-            <span className="text-sm font-semibold text-green-800">
+            <div className="w-3 h-3 bg-blue-500 rounded-full ring-2 ring-blue-300"></div>
+            <span className="text-sm font-semibold text-blue-800">
               Aceptación:{" "}
               <code className="font-mono">
                 {dfa.accepting.join(", ")}
@@ -316,9 +371,9 @@ export default function DFAVisualizer({ dfa }: DFAVisualizerProps) {
           nodeColor={(node: Node) => {
             const isAccepting = dfa.accepting.includes(node.id);
             const isStart = node.id === dfa.start;
-            if (isAccepting) return "#10b981";
+            if (isAccepting) return "#3b82f6";
             if (isStart) return "#eab308";
-            return "#3b82f6";
+            return "#94a3b8";
           }}
           maskColor="rgba(0, 0, 0, 0.1)"
           pannable

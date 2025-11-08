@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { JFLAPExporter } from "@/src/infrastructure/jflap/JFLAPExporter";
+import { DFASerialized } from "@/src/domain/entities/DFA";
 
 // Normalizar BASE_URL para asegurar que termine con "/"
 const getBaseUrl = (): string => {
@@ -11,15 +13,11 @@ const BASE_URL = getBaseUrl();
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const regex = searchParams.get("regex");
-  const test = searchParams.get("test") || undefined;
 
   if (!regex) {
     return NextResponse.json(
       {
         success: false,
-        regex: null,
-        dfa: null,
-        test_result: null,
         error: "El parámetro 'regex' es requerido",
       },
       { status: 400 }
@@ -27,16 +25,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-
     // Construir URL para la API de Django
     const apiUrl = new URL("api/regex-to-dfa/", BASE_URL);
     apiUrl.searchParams.append("regex", regex);
-    if (test) {
-      apiUrl.searchParams.append("test", test);
-    }
 
-    console.log("Calling Django API:", apiUrl.toString());
-    console.log("BASE_URL:", BASE_URL);
+    console.log("Calling Django API for JFLAP:", apiUrl.toString());
 
     // Hacer petición a la API de Django
     const response = await fetch(apiUrl.toString(), {
@@ -69,10 +62,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          regex: regex,
-          dfa: null,
-          test_result: null,
-          error: `La API de Django devolvió una respuesta no válida (${response.status} ${response.statusText}). Verifica que la API esté corriendo en ${BASE_URL} y que la ruta /api/regex-to-dfa/ exista. La respuesta recibida parece ser HTML, no JSON.`,
+          error: `La API de Django devolvió una respuesta no válida (${response.status} ${response.statusText}). Verifica que la API esté corriendo en ${BASE_URL} y que la ruta /api/regex-to-dfa/ exista.`,
         },
         { status: 500 }
       );
@@ -87,50 +77,61 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(data, { status: response.status });
     }
 
-    console.log("Django API response successful (GET):", {
-      success: data.success,
-      hasDfa: !!data.dfa,
-      hasTestResult: !!data.test_result,
-    });
+    // Verificar que la respuesta tenga el DFA
+    if (!data.success || !data.dfa) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: data.error || "No se pudo generar el DFA",
+        },
+        { status: 500 }
+      );
+    }
 
-    return NextResponse.json(data);
+    // Convertir DFA a formato JFLAP
+    const dfa: DFASerialized = data.dfa;
+    const jflapXml = JFLAPExporter.exportToJFLAP(dfa);
+    const fileName = JFLAPExporter.generateFileName(regex);
+    
+    // Escapar el nombre del archivo para el header Content-Disposition
+    const escapedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+
+    // Devolver el archivo JFLAP
+    return new NextResponse(jflapXml, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/xml",
+        "Content-Disposition": `attachment; filename="${escapedFileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+      },
+    });
   } catch (error) {
     console.error("Error calling Django API (GET):", error);
-    
+
     // Manejar errores de timeout
     if (error instanceof Error && error.name === "TimeoutError") {
       return NextResponse.json(
         {
           success: false,
-          regex: regex ?? null,
-          dfa: null,
-          test_result: null,
           error: "Timeout: La API de Django no respondió en el tiempo esperado. Verifica que esté corriendo.",
         },
         { status: 504 }
       );
     }
-    
+
     // Manejar errores de conexión
     if (error instanceof Error && error.message.includes("fetch failed")) {
       return NextResponse.json(
         {
           success: false,
-          regex: regex ?? null,
-          dfa: null,
-          test_result: null,
           error: `Error de conexión: No se pudo conectar con la API de Django en ${BASE_URL}. Verifica que el servidor esté corriendo.`,
         },
         { status: 503 }
       );
     }
-    
+
     return NextResponse.json(
       {
         success: false,
-        regex: regex || null,
-        dfa: null,
-        test_result: null,
         error:
           error instanceof Error
             ? `Error al conectar con la API: ${error.message}`
@@ -143,20 +144,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   let regex: string | undefined;
-  let test: string | undefined;
 
   try {
     const body = await request.json();
     regex = body.regex;
-    test = body.test;
 
     if (!regex) {
       return NextResponse.json(
         {
           success: false,
-          regex: null,
-          dfa: null,
-          test_result: null,
           error: "El campo 'regex' es requerido en el cuerpo de la petición",
         },
         { status: 400 }
@@ -166,9 +162,8 @@ export async function POST(request: NextRequest) {
     // Construir URL para la API de Django
     const apiUrl = new URL("api/regex-to-dfa/", BASE_URL);
 
-    console.log("Calling Django API:", apiUrl.toString());
-    console.log("BASE_URL:", BASE_URL);
-    console.log("Request body:", { regex, test });
+    console.log("Calling Django API for JFLAP (POST):", apiUrl.toString());
+    console.log("Request body:", { regex });
 
     // Hacer petición POST a la API de Django
     const response = await fetch(apiUrl.toString(), {
@@ -177,7 +172,7 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify({ regex, test }),
+      body: JSON.stringify({ regex }),
       // Timeout de 30 segundos
       signal: AbortSignal.timeout(30000),
     });
@@ -202,10 +197,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          regex: regex,
-          dfa: null,
-          test_result: null,
-          error: `La API de Django devolvió una respuesta no válida (${response.status} ${response.statusText}). Verifica que la API esté corriendo en ${BASE_URL} y que la ruta /api/regex-to-dfa/ exista. La respuesta recibida parece ser HTML, no JSON.`,
+          error: `La API de Django devolvió una respuesta no válida (${response.status} ${response.statusText}). Verifica que la API esté corriendo en ${BASE_URL} y que la ruta /api/regex-to-dfa/ exista.`,
         },
         { status: 500 }
       );
@@ -220,50 +212,61 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(data, { status: response.status });
     }
 
-    console.log("Django API response successful (POST):", {
-      success: data.success,
-      hasDfa: !!data.dfa,
-      hasTestResult: !!data.test_result,
-    });
+    // Verificar que la respuesta tenga el DFA
+    if (!data.success || !data.dfa) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: data.error || "No se pudo generar el DFA",
+        },
+        { status: 500 }
+      );
+    }
 
-    return NextResponse.json(data);
+    // Convertir DFA a formato JFLAP
+    const dfa: DFASerialized = data.dfa;
+    const jflapXml = JFLAPExporter.exportToJFLAP(dfa);
+    const fileName = JFLAPExporter.generateFileName(regex);
+    
+    // Escapar el nombre del archivo para el header Content-Disposition
+    const escapedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+
+    // Devolver el archivo JFLAP
+    return new NextResponse(jflapXml, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/xml",
+        "Content-Disposition": `attachment; filename="${escapedFileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+      },
+    });
   } catch (error) {
     console.error("Error calling Django API (POST):", error);
-    
+
     // Manejar errores de timeout
     if (error instanceof Error && error.name === "TimeoutError") {
       return NextResponse.json(
         {
           success: false,
-          regex: regex ?? null,
-          dfa: null,
-          test_result: null,
           error: "Timeout: La API de Django no respondió en el tiempo esperado. Verifica que esté corriendo.",
         },
         { status: 504 }
       );
     }
-    
+
     // Manejar errores de conexión
     if (error instanceof Error && error.message.includes("fetch failed")) {
       return NextResponse.json(
         {
           success: false,
-          regex: regex ?? null,
-          dfa: null,
-          test_result: null,
           error: `Error de conexión: No se pudo conectar con la API de Django en ${BASE_URL}. Verifica que el servidor esté corriendo.`,
         },
         { status: 503 }
       );
     }
-    
+
     return NextResponse.json(
       {
         success: false,
-        regex: regex || null,
-        dfa: null,
-        test_result: null,
         error:
           error instanceof Error
             ? `Error al conectar con la API: ${error.message}`

@@ -1,9 +1,39 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import RegexForm from "@/src/presentation/components/RegexForm";
-import DFAVisualizerD3 from "@/src/presentation/components/DFAVisualizerD3";
 import DFADetails from "@/src/presentation/components/DFADetails";
+
+// Cargar DFAVisualizerD3 solo en el cliente para evitar problemas de hidratación
+const DFAVisualizerD3 = dynamic(
+  () => import("@/src/presentation/components/DFAVisualizerD3"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-[600px] border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
+        <div className="text-center text-gray-500">
+          <div className="mx-auto h-12 w-12 text-gray-400">
+            <svg
+              className="animate-spin"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+          </div>
+          <p className="mt-2 text-sm font-medium">Cargando visualizador...</p>
+        </div>
+      </div>
+    ),
+  }
+);
 
 interface DFAData {
   alphabet: string[];
@@ -19,6 +49,7 @@ interface DFAData {
 
 export default function Home() {
   const [dfa, setDfa] = useState<DFAData | null>(null);
+  const [regex, setRegex] = useState<string>("");
   const [testResult, setTestResult] = useState<{
     string: string;
     accepted: boolean;
@@ -26,11 +57,13 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
 
   const handleResult = (data: {
+    regex: string;
     dfa: DFAData | null;
     testResult: { string: string; accepted: boolean } | null;
     error: string | null;
   }) => {
     setDfa(data.dfa);
+    setRegex(data.regex);
     setTestResult(data.testResult);
     setError(data.error);
   };
@@ -84,7 +117,7 @@ export default function Home() {
         {/* Details Section */}
         {(dfa || error) && (
           <div className="mb-6">
-            <DFADetails dfa={dfa} testResult={testResult} />
+            <DFADetails dfa={dfa} testResult={testResult} regex={regex} />
           </div>
         )}
 

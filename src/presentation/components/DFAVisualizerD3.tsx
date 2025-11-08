@@ -103,11 +103,14 @@ export default function DFAVisualizerD3({ dfa }: DFAVisualizerD3Props) {
       dfa.states.forEach((stateId) => {
         const isAccepting = dfa.accepting.includes(stateId);
         const shape = isAccepting ? "accept" : "normal";
+        // Colores diferentes para estados de aceptación y normales
+        const strokeColor = isAccepting ? "#3b82f6" : "#94a3b8"; // Azul para aceptación, gris para normal
+        const strokeWidth = isAccepting ? "3px" : "2px";
 
         g.setNode(stateId, {
           shape: shape,
           label: stateId,
-          style: "fill: white; stroke: #333; stroke-width: 2px;",
+          style: `fill: white; stroke: ${strokeColor}; stroke-width: ${strokeWidth};`,
           labelStyle: "font-size: 14px; font-weight: bold;",
         });
       });
@@ -166,7 +169,7 @@ export default function DFAVisualizerD3({ dfa }: DFAVisualizerD3Props) {
       // Configurar formas personalizadas
       const render = new window.dagreD3.render();
 
-      // Forma para nodo normal (círculo)
+      // Forma para nodo normal (círculo simple gris)
       render.shapes().normal = function (parent: any, bbox: any, node: any) {
         const w = bbox.width;
         const h = bbox.height;
@@ -181,8 +184,8 @@ export default function DFAVisualizerD3({ dfa }: DFAVisualizerD3Props) {
           .attr("rx", rx)
           .attr("ry", ry)
           .attr("fill", "white")
-          .attr("stroke", "#3b82f6")
-          .attr("stroke-width", "2.5px")
+          .attr("stroke", "#94a3b8")
+          .attr("stroke-width", "2px")
           .attr("transform", `translate(${-w / 2}, ${-h / 2})`);
 
         node.intersect = function (point: any) {
@@ -191,7 +194,7 @@ export default function DFAVisualizerD3({ dfa }: DFAVisualizerD3Props) {
         return shapeSvg;
       };
 
-      // Forma para nodo de aceptación (doble círculo)
+      // Forma para nodo de aceptación (doble círculo azul)
       render.shapes().accept = function (parent: any, bbox: any, node: any) {
         const w = bbox.width;
         const h = bbox.height;
@@ -199,29 +202,46 @@ export default function DFAVisualizerD3({ dfa }: DFAVisualizerD3Props) {
         const ry = rx;
         const point = { x: w / 2, y: h / 2 };
 
-        // Círculo exterior
+        // Círculo exterior (más grande, se dibuja primero para que quede atrás)
         const outerCircle = parent
           .insert("ellipse", ":first-child")
+          .attr("cx", point.x)
+          .attr("cy", point.y)
+          .attr("rx", rx + 4)
+          .attr("ry", ry + 4)
+          .attr("fill", "none")
+          .attr("stroke", "#3b82f6")
+          .attr("stroke-width", "3px")
+          .attr("transform", `translate(${-w / 2}, ${-h / 2})`);
+
+        // Círculo interior (más pequeño, se dibuja después para que quede encima)
+        // Usamos append en lugar de insert para evitar problemas con querySelector
+        const innerCircle = parent
+          .append("ellipse")
           .attr("cx", point.x)
           .attr("cy", point.y)
           .attr("rx", rx)
           .attr("ry", ry)
           .attr("fill", "white")
-          .attr("stroke", "#10b981")
-          .attr("stroke-width", "2.5px")
+          .attr("stroke", "#3b82f6")
+          .attr("stroke-width", "2px")
           .attr("transform", `translate(${-w / 2}, ${-h / 2})`);
 
-        // Círculo interior
-        const innerCircle = parent
-          .insert("ellipse", ":first-child")
-          .attr("cx", point.x)
-          .attr("cy", point.y)
-          .attr("rx", rx - 4)
-          .attr("ry", ry - 4)
-          .attr("fill", "white")
-          .attr("stroke", "#10b981")
-          .attr("stroke-width", "2.5px")
-          .attr("transform", `translate(${-w / 2}, ${-h / 2})`);
+        // Agregar el texto del label manualmente en el centro
+        const labelText = node.label || "";
+        if (labelText) {
+          parent
+            .append("text")
+            .attr("x", point.x)
+            .attr("y", point.y)
+            .attr("dy", "0.35em")
+            .attr("text-anchor", "middle")
+            .attr("font-size", "14px")
+            .attr("font-weight", "bold")
+            .attr("fill", "#1f2937")
+            .text(labelText)
+            .attr("transform", `translate(${-w / 2}, ${-h / 2})`);
+        }
 
         node.intersect = function (point: any) {
           return window.dagreD3.intersect.ellipse(node, rx, ry, point);
@@ -356,7 +376,8 @@ export default function DFAVisualizerD3({ dfa }: DFAVisualizerD3Props) {
   }, [dfa, libsLoaded, isMounted]);
 
   // No renderizar nada hasta que esté montado (evitar problemas de hidratación)
-  if (!isMounted) {
+  // En el servidor, retornar un placeholder que coincida exactamente con el cliente
+  if (!isMounted || typeof window === "undefined") {
     return (
       <div
         className="w-full h-[600px] border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50"
@@ -425,8 +446,9 @@ export default function DFAVisualizerD3({ dfa }: DFAVisualizerD3Props) {
     <div
       ref={containerRef}
       className="w-full h-[600px] border-2 border-gray-200 rounded-lg bg-white shadow-lg overflow-hidden"
+      suppressHydrationWarning
     >
-      <svg ref={svgRef} className="w-full h-full"></svg>
+      <svg ref={svgRef} className="w-full h-full" suppressHydrationWarning></svg>
     </div>
   );
 }
