@@ -4,6 +4,7 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import RegexForm from "@/src/presentation/components/RegexForm";
 import DFADetails from "@/src/presentation/components/DFADetails";
+import RegexFileProcessor from "@/src/presentation/components/RegexFileProcessor";
 
 // Cargar DFAVisualizerD3 solo en el cliente para evitar problemas de hidratación
 const DFAVisualizerD3 = dynamic(
@@ -120,6 +121,19 @@ export default function Home() {
             <DFADetails dfa={dfa} testResult={testResult} regex={regex} />
           </div>
         )}
+
+        {/* File Processor Section */}
+        <div className="mb-6 border-t border-gray-200 pt-6">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              Procesamiento por Lotes
+            </h2>
+            <p className="text-gray-600">
+              Procesa múltiples expresiones regulares desde un archivo y genera un dataset CSV completo
+            </p>
+          </div>
+          <RegexFileProcessor />
+        </div>
 
         {/* Footer */}
         <footer className="text-center text-sm text-gray-500 mt-12 pb-8">
