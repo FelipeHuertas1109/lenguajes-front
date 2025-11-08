@@ -3,6 +3,7 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import RegexForm from "@/src/presentation/components/RegexForm";
+import TransitionsForm from "@/src/presentation/components/TransitionsForm";
 import DFADetails from "@/src/presentation/components/DFADetails";
 import RegexFileProcessor from "@/src/presentation/components/RegexFileProcessor";
 
@@ -48,7 +49,10 @@ interface DFAData {
   }>;
 }
 
+type InputType = "regex" | "transitions";
+
 export default function Home() {
+  const [inputType, setInputType] = useState<InputType>("regex");
   const [dfa, setDfa] = useState<DFAData | null>(null);
   const [regex, setRegex] = useState<string>("");
   const [testResult, setTestResult] = useState<{
@@ -57,7 +61,7 @@ export default function Home() {
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleResult = (data: {
+  const handleRegexResult = (data: {
     regex: string;
     dfa: DFAData | null;
     testResult: { string: string; accepted: boolean } | null;
@@ -69,16 +73,27 @@ export default function Home() {
     setError(data.error);
   };
 
+  const handleTransitionsResult = (data: {
+    dfa: DFAData | null;
+    testResult: { string: string; accepted: boolean } | null;
+    error: string | null;
+  }) => {
+    setDfa(data.dfa);
+    setRegex(""); // No hay regex cuando se usan transiciones
+    setTestResult(data.testResult);
+    setError(data.error);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Header */}
         <header className="text-center mb-8">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-3 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-            Regex to DFA Converter
+            DFA Converter
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Convierte expresiones regulares en autómatas finitos deterministas
+            Convierte expresiones regulares o transiciones en autómatas finitos deterministas
             (DFA) y visualízalos gráficamente. Usa el algoritmo de Thompson y
             construcción de subconjuntos.
           </p>
@@ -88,7 +103,55 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           {/* Left Column - Form */}
           <div className="lg:col-span-1">
-            <RegexForm onResult={handleResult} />
+            {/* Selector de tipo de entrada */}
+            <div className="bg-white rounded-xl shadow-lg p-4 border border-gray-200 mb-4">
+              <label className="block text-sm font-semibold text-gray-900 mb-3">
+                Tipo de Entrada
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInputType("regex");
+                    setDfa(null);
+                    setRegex("");
+                    setTestResult(null);
+                    setError(null);
+                  }}
+                  className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-colors ${
+                    inputType === "regex"
+                      ? "bg-indigo-600 text-white"
+                      : "bg-gray-100 text-gray-900 hover:bg-gray-200"
+                  }`}
+                >
+                  Expresión Regular
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInputType("transitions");
+                    setDfa(null);
+                    setRegex("");
+                    setTestResult(null);
+                    setError(null);
+                  }}
+                  className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-colors ${
+                    inputType === "transitions"
+                      ? "bg-indigo-600 text-white"
+                      : "bg-gray-100 text-gray-900 hover:bg-gray-200"
+                  }`}
+                >
+                  Transiciones
+                </button>
+              </div>
+            </div>
+            
+            {/* Formulario correspondiente */}
+            {inputType === "regex" ? (
+              <RegexForm onResult={handleRegexResult} />
+            ) : (
+              <TransitionsForm onResult={handleTransitionsResult} />
+            )}
           </div>
 
           {/* Right Column - Visualization */}

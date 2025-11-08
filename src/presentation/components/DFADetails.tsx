@@ -22,7 +22,7 @@ interface TestResult {
 interface DFADetailsProps {
   dfa: DFAData | null;
   testResult: TestResult | null;
-  regex: string;
+  regex?: string;
 }
 
 export default function DFADetails({ dfa, testResult, regex }: DFADetailsProps) {
@@ -106,12 +106,13 @@ export default function DFADetails({ dfa, testResult, regex }: DFADetailsProps) 
           </svg>
           Detalles del DFA
         </h3>
-        <button
-          onClick={handleDownloadJFLAP}
-          disabled={downloading || !regex}
-          className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-          title="Descargar DFA en formato JFLAP (.jff)"
-        >
+        {regex && (
+          <button
+            onClick={handleDownloadJFLAP}
+            disabled={downloading}
+            className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            title="Descargar DFA en formato JFLAP (.jff)"
+          >
           {downloading ? (
             <>
               <svg
@@ -154,7 +155,8 @@ export default function DFADetails({ dfa, testResult, regex }: DFADetailsProps) 
               Descargar JFLAP
             </>
           )}
-        </button>
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">

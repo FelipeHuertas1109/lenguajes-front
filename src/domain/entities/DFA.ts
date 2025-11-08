@@ -19,7 +19,7 @@ export class DFA {
   public readonly states: Map<string, State>;
   public readonly alphabet: Set<string>;
   public readonly transitions: Map<string, Map<string, State>>;
-  public readonly startState: State;
+  public startState: State;
   public readonly acceptingStates: Set<State>;
 
   constructor() {
@@ -28,6 +28,13 @@ export class DFA {
     this.transitions = new Map();
     this.startState = this.createState("S0");
     this.acceptingStates = new Set();
+  }
+
+  setStartState(state: State): void {
+    if (!this.states.has(state.id)) {
+      throw new Error(`Estado '${state.id}' no existe en el DFA`);
+    }
+    this.startState = state;
   }
 
   createState(id: string): State {
