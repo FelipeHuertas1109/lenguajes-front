@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     console.log("Calling Django API:", apiUrl.toString());
     console.log("BASE_URL:", BASE_URL);
 
-    // Hacer petición a la API de Django
+    
     const response = await fetch(apiUrl.toString(), {
       method: "GET",
       headers: {
