@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSweetAlert } from "../../utils/useSweetAlert";
 
 interface DFAData {
   alphabet: string[];
@@ -27,6 +28,7 @@ interface DFADetailsProps {
 
 export default function DFADetails({ dfa, testResult, regex }: DFADetailsProps) {
   const [downloading, setDownloading] = useState(false);
+  const { showError, showSuccess } = useSweetAlert();
 
   const handleDownloadJFLAP = async () => {
     if (!regex) return;
@@ -75,9 +77,11 @@ export default function DFADetails({ dfa, testResult, regex }: DFADetailsProps) 
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+      showSuccess("Archivo descargado", "El archivo JFLAP se ha descargado exitosamente");
     } catch (error) {
       console.error("Error downloading JFLAP file:", error);
-      alert(error instanceof Error ? error.message : "Error al descargar el archivo");
+      const errorMessage = error instanceof Error ? error.message : "Error al descargar el archivo";
+      await showError("Error al descargar", errorMessage);
     } finally {
       setDownloading(false);
     }

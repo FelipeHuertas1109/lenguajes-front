@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, FormEvent } from "react";
+import { useSweetAlert } from "../../utils/useSweetAlert";
 
 interface DFAData {
   alphabet: string[];
@@ -27,31 +28,68 @@ export default function RegexForm({ onResult }: RegexFormProps) {
   const [regex, setRegex] = useState("");
   const [testString, setTestString] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { showError, showSuccess } = useSweetAlert();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
 
     try {
       const params = new URLSearchParams({ regex });
+      
+      // Procesar múltiples cadenas de prueba separadas por comas
       if (testString) {
-        params.append("test", testString);
+        const tests = testString.split(",").map(t => t.trim()).filter(t => t.length > 0);
+        if (tests.length > 0) {
+          if (tests.length === 1) {
+            // Si hay solo una cadena, usar test para compatibilidad
+            params.append("test", tests[0]);
+          } else {
+            // Si hay múltiples, usar tests
+            params.append("tests", tests.join(","));
+          }
+        }
       }
 
       const response = await fetch(`/api/regex-to-dfa?${params.toString()}`);
       const data = await response.json();
 
       if (data.success) {
+        // Priorizar test_results sobre test_result
+        const testResult = data.test_results && data.test_results.length > 0 
+          ? data.test_results[0] // Usar el primero para compatibilidad
+          : data.test_result;
+        
         onResult({
           regex: regex,
           dfa: data.dfa,
-          testResult: data.test_result,
+          testResult: testResult,
           error: null,
         });
+        
+        // Mostrar resultados si hay múltiples cadenas
+        if (data.test_results && data.test_results.length > 0) {
+          const resultsText = data.test_results
+            .map((r: { string: string; accepted: boolean }) => 
+              `"${r.string}": ${r.accepted ? "✓ Aceptada" : "✗ Rechazada"}`
+            )
+            .join("\n");
+          showSuccess(
+            "Resultados de las pruebas",
+            resultsText
+          );
+        } else if (data.test_result) {
+          const resultText = data.test_result.accepted
+            ? `La cadena "${data.test_result.string}" fue aceptada`
+            : `La cadena "${data.test_result.string}" fue rechazada`;
+          showSuccess(
+            data.test_result.accepted ? "Cadena aceptada" : "Cadena rechazada",
+            resultText
+          );
+        }
       } else {
-        setError(data.error || "Error al procesar la expresión regular");
+        const errorMsg = data.error || "Error al procesar la expresión regular";
+        await showError("Error al procesar", errorMsg);
         onResult({
           regex: regex,
           dfa: null,
@@ -62,7 +100,7 @@ export default function RegexForm({ onResult }: RegexFormProps) {
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Error de conexión";
-      setError(errorMessage);
+      await showError("Error de conexión", errorMessage);
       onResult({
         regex: regex,
         dfa: null,
@@ -130,16 +168,10 @@ export default function RegexForm({ onResult }: RegexFormProps) {
             id="test"
             value={testString}
             onChange={(e) => setTestString(e.target.value)}
-            placeholder="Ej: aaab, ab, b"
+            placeholder="Ej: aaab,b,aaa (múltiples cadenas separadas por comas)"
             className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-lg font-mono text-black placeholder:text-gray-400"
           />
         </div>
-
-        {error && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-800 font-medium">{error}</p>
-          </div>
-        )}
 
         <button
           type="submit"

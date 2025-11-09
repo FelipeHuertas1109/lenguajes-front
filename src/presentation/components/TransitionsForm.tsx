@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, FormEvent } from "react";
+import { useSweetAlert } from "../../utils/useSweetAlert";
 
 interface DFAData {
   alphabet: string[];
@@ -43,7 +44,7 @@ export default function TransitionsForm({ onResult }: TransitionsFormProps) {
   });
   const [testString, setTestString] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { showError, showSuccess, showWarning } = useSweetAlert();
 
   const handleAddState = () => {
     if (newState && !states.includes(newState)) {
@@ -57,9 +58,9 @@ export default function TransitionsForm({ onResult }: TransitionsFormProps) {
     }
   };
 
-  const handleRemoveState = (stateToRemove: string) => {
+  const handleRemoveState = async (stateToRemove: string) => {
     if (states.length <= 1) {
-      setError("Debe haber al menos un estado");
+      await showWarning("No se puede eliminar", "Debe haber al menos un estado");
       return;
     }
     const updatedStates = states.filter((s) => s !== stateToRemove);
@@ -81,9 +82,9 @@ export default function TransitionsForm({ onResult }: TransitionsFormProps) {
     );
   };
 
-  const handleAddTransition = () => {
+  const handleAddTransition = async () => {
     if (!newTransition.from || !newTransition.symbol || !newTransition.to) {
-      setError("Todos los campos de la transición son requeridos");
+      await showWarning("Campos requeridos", "Todos los campos de la transición son requeridos");
       return;
     }
     
@@ -96,7 +97,7 @@ export default function TransitionsForm({ onResult }: TransitionsFormProps) {
     );
     
     if (exists) {
-      setError("Esta transición ya existe");
+      await showWarning("Transición duplicada", "Esta transición ya existe");
       return;
     }
     
@@ -107,15 +108,15 @@ export default function TransitionsForm({ onResult }: TransitionsFormProps) {
     );
     
     if (!isDeterministic) {
-      setError(
-        `Transición no determinista: ya existe una transición desde '${newTransition.from}' con símbolo '${newTransition.symbol}'`
+      await showError(
+        "Transición no determinista",
+        `Ya existe una transición desde '${newTransition.from}' con símbolo '${newTransition.symbol}'`
       );
       return;
     }
     
     setTransitions([...transitions, { ...newTransition }]);
     setNewTransition({ from: start, symbol: "", to: states[0] });
-    setError(null);
   };
 
   const handleRemoveTransition = (index: number) => {
@@ -133,23 +134,22 @@ export default function TransitionsForm({ onResult }: TransitionsFormProps) {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
 
     // Validaciones
     if (states.length === 0) {
-      setError("Debe haber al menos un estado");
+      await showWarning("Validación", "Debe haber al menos un estado");
       setLoading(false);
       return;
     }
 
     if (!start || !states.includes(start)) {
-      setError("El estado inicial debe estar en la lista de estados");
+      await showWarning("Validación", "El estado inicial debe estar en la lista de estados");
       setLoading(false);
       return;
     }
 
     if (transitions.length === 0) {
-      setError("Debe haber al menos una transición");
+      await showWarning("Validación", "Debe haber al menos una transición");
       setLoading(false);
       return;
     }
@@ -162,8 +162,18 @@ export default function TransitionsForm({ onResult }: TransitionsFormProps) {
         transitions,
       };
 
+      // Procesar múltiples cadenas de prueba separadas por comas
       if (testString) {
-        requestBody.test = testString;
+        const tests = testString.split(",").map(t => t.trim()).filter(t => t.length > 0);
+        if (tests.length > 0) {
+          if (tests.length === 1) {
+            // Si hay solo una cadena, usar test para compatibilidad
+            requestBody.test = tests[0];
+          } else {
+            // Si hay múltiples, usar tests
+            requestBody.tests = tests;
+          }
+        }
       }
 
       const response = await fetch("/api/transitions-to-dfa", {
@@ -177,13 +187,40 @@ export default function TransitionsForm({ onResult }: TransitionsFormProps) {
       const data = await response.json();
 
       if (data.success) {
+        // Priorizar test_results sobre test_result
+        const testResult = data.test_results && data.test_results.length > 0 
+          ? data.test_results[0] // Usar el primero para compatibilidad
+          : data.test_result;
+        
         onResult({
           dfa: data.dfa,
-          testResult: data.test_result,
+          testResult: testResult,
           error: null,
         });
+        
+        // Mostrar resultados si hay múltiples cadenas
+        if (data.test_results && data.test_results.length > 0) {
+          const resultsText = data.test_results
+            .map((r: { string: string; accepted: boolean }) => 
+              `"${r.string}": ${r.accepted ? "✓ Aceptada" : "✗ Rechazada"}`
+            )
+            .join("\n");
+          showSuccess(
+            "Resultados de las pruebas",
+            resultsText
+          );
+        } else if (data.test_result) {
+          const resultText = data.test_result.accepted
+            ? `La cadena "${data.test_result.string}" fue aceptada`
+            : `La cadena "${data.test_result.string}" fue rechazada`;
+          showSuccess(
+            data.test_result.accepted ? "Cadena aceptada" : "Cadena rechazada",
+            resultText
+          );
+        }
       } else {
-        setError(data.error || "Error al procesar las transiciones");
+        const errorMsg = data.error || "Error al procesar las transiciones";
+        await showError("Error al procesar", errorMsg);
         onResult({
           dfa: null,
           testResult: null,
@@ -193,7 +230,7 @@ export default function TransitionsForm({ onResult }: TransitionsFormProps) {
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Error de conexión";
-      setError(errorMessage);
+      await showError("Error de conexión", errorMessage);
       onResult({
         dfa: null,
         testResult: null,
@@ -383,16 +420,10 @@ export default function TransitionsForm({ onResult }: TransitionsFormProps) {
             type="text"
             value={testString}
             onChange={(e) => setTestString(e.target.value)}
-            placeholder="Ej: aab, ab, b"
+            placeholder="Ej: a,aa,b (múltiples cadenas separadas por comas)"
             className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm font-mono text-gray-900 placeholder:text-gray-500"
           />
         </div>
-
-        {error && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-800 font-medium">{error}</p>
-          </div>
-        )}
 
         <button
           type="submit"

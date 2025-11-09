@@ -1,20 +1,18 @@
 "use client";
 
 import { useState, useRef, DragEvent } from "react";
+import { useSweetAlert } from "../../utils/useSweetAlert";
 
 export default function RegexFileProcessor() {
   const [file, setFile] = useState<File | null>(null);
   const [processing, setProcessing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const { showError, showSuccess, showWarning } = useSweetAlert();
 
-  const handleFileSelect = (selectedFile: File | null) => {
+  const handleFileSelect = async (selectedFile: File | null) => {
     if (!selectedFile) {
       setFile(null);
-      setError(null);
-      setSuccess(false);
       return;
     }
 
@@ -23,15 +21,15 @@ export default function RegexFileProcessor() {
       fileName.endsWith(".txt") || fileName.endsWith(".csv");
 
     if (!isValidExtension) {
-      setError("El archivo debe ser un archivo de texto (.txt) o CSV (.csv)");
+      await showWarning(
+        "Formato inválido",
+        "El archivo debe ser un archivo de texto (.txt) o CSV (.csv)"
+      );
       setFile(null);
-      setSuccess(false);
       return;
     }
 
     setFile(selectedFile);
-    setError(null);
-    setSuccess(false);
   };
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,8 +61,6 @@ export default function RegexFileProcessor() {
     if (!file) return;
 
     setProcessing(true);
-    setError(null);
-    setSuccess(false);
 
     try {
       const formData = new FormData();
@@ -117,13 +113,14 @@ export default function RegexFileProcessor() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      setSuccess(true);
+      showSuccess(
+        "Archivo procesado",
+        `El archivo CSV "${fileName}" se ha generado y descargado exitosamente`
+      );
     } catch (err) {
       console.error("Error processing file:", err);
-      setError(
-        err instanceof Error ? err.message : "Error al procesar el archivo"
-      );
-      setSuccess(false);
+      const errorMessage = err instanceof Error ? err.message : "Error al procesar el archivo";
+      await showError("Error al procesar", errorMessage);
     } finally {
       setProcessing(false);
     }
@@ -131,8 +128,6 @@ export default function RegexFileProcessor() {
 
   const handleReset = () => {
     setFile(null);
-    setError(null);
-    setSuccess(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -263,36 +258,6 @@ export default function RegexFileProcessor() {
           Estados, Transiciones, Clase (100 cadenas de prueba), y Error.
         </p>
       </div>
-
-      {/* Mensajes de error y éxito */}
-      {error && (
-        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-800 font-medium">{error}</p>
-        </div>
-      )}
-
-      {success && (
-        <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-          <div className="flex items-center gap-2">
-            <svg
-              className="w-5 h-5 text-green-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-            <p className="text-sm text-green-800 font-medium">
-              Archivo CSV generado y descargado exitosamente
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Botón de procesar */}
       <button

@@ -6,7 +6,8 @@ export interface TransitionsToDFARequest {
   start: string;
   accepting: string[];
   transitions: DFATransition[];
-  test?: string;
+  test?: string; // Mantener para compatibilidad hacia atrás
+  tests?: string[]; // Nuevo: aceptar múltiples cadenas
 }
 
 export interface TransitionsToDFAResponse {
@@ -15,7 +16,11 @@ export interface TransitionsToDFAResponse {
   test_result: {
     string: string;
     accepted: boolean;
-  } | null;
+  } | null; // Mantener para compatibilidad hacia atrás
+  test_results: {
+    string: string;
+    accepted: boolean;
+  }[] | null; // Nuevo: resultados de múltiples cadenas
   error: string | null;
 }
 
@@ -28,6 +33,7 @@ export class TransitionsToDFAUseCase {
           success: false,
           dfa: null,
           test_result: null,
+          test_results: null,
           error: "Parámetro 'states' requerido",
         };
       }
@@ -37,6 +43,7 @@ export class TransitionsToDFAUseCase {
           success: false,
           dfa: null,
           test_result: null,
+          test_results: null,
           error: "Parámetro 'start' requerido",
         };
       }
@@ -46,6 +53,7 @@ export class TransitionsToDFAUseCase {
           success: false,
           dfa: null,
           test_result: null,
+          test_results: null,
           error: "Parámetro 'accepting' requerido",
         };
       }
@@ -55,18 +63,20 @@ export class TransitionsToDFAUseCase {
           success: false,
           dfa: null,
           test_result: null,
+          test_results: null,
           error: "Parámetro 'transitions' requerido",
         };
       }
 
       // Validar que el estado inicial existe en la lista de estados
       if (!request.states.includes(request.start)) {
-        return {
-          success: false,
-          dfa: null,
-          test_result: null,
-          error: `Estado inicial '${request.start}' no está en la lista de estados`,
-        };
+          return {
+            success: false,
+            dfa: null,
+            test_result: null,
+            test_results: null,
+            error: `Estado inicial '${request.start}' no está en la lista de estados`,
+          };
       }
 
       // Validar que todos los estados de aceptación existen
@@ -76,6 +86,7 @@ export class TransitionsToDFAUseCase {
             success: false,
             dfa: null,
             test_result: null,
+            test_results: null,
             error: `Estado de aceptación '${acceptingState}' no está en la lista de estados`,
           };
         }
@@ -90,6 +101,7 @@ export class TransitionsToDFAUseCase {
             success: false,
             dfa: null,
             test_result: null,
+            test_results: null,
             error: "Transición inválida: falta 'from', 'symbol' o 'to'",
           };
         }
@@ -100,6 +112,7 @@ export class TransitionsToDFAUseCase {
             success: false,
             dfa: null,
             test_result: null,
+            test_results: null,
             error: `Estado origen '${transition.from}' en transición no está en la lista de estados`,
           };
         }
@@ -109,6 +122,7 @@ export class TransitionsToDFAUseCase {
             success: false,
             dfa: null,
             test_result: null,
+            test_results: null,
             error: `Estado destino '${transition.to}' en transición no está en la lista de estados`,
           };
         }
@@ -124,6 +138,7 @@ export class TransitionsToDFAUseCase {
             success: false,
             dfa: null,
             test_result: null,
+            test_results: null,
             error: `Transición no determinista: desde '${transition.from}' con símbolo '${transition.symbol}' hay múltiples transiciones`,
           };
         }
@@ -178,9 +193,18 @@ export class TransitionsToDFAUseCase {
       // Serializar el DFA
       const dfaSerialized = dfa.serialize();
 
-      // Probar la cadena si se proporciona
+      // Probar las cadenas si se proporcionan
       let testResult = null;
-      if (request.test !== undefined) {
+      let testResults: { string: string; accepted: boolean }[] | null = null;
+
+      // Manejar tests (array) - tiene prioridad sobre test (string)
+      if (request.tests !== undefined && Array.isArray(request.tests)) {
+        testResults = request.tests.map((testString) => ({
+          string: testString,
+          accepted: dfa.accepts(testString),
+        }));
+      } else if (request.test !== undefined) {
+        // Compatibilidad hacia atrás: manejar test (string)
         const accepted = dfa.accepts(request.test);
         testResult = {
           string: request.test,
@@ -192,6 +216,7 @@ export class TransitionsToDFAUseCase {
         success: true,
         dfa: dfaSerialized,
         test_result: testResult,
+        test_results: testResults,
         error: null,
       };
     } catch (error) {
@@ -199,6 +224,7 @@ export class TransitionsToDFAUseCase {
         success: false,
         dfa: null,
         test_result: null,
+        test_results: null,
         error:
           error instanceof Error
             ? error.message

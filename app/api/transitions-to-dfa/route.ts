@@ -14,6 +14,7 @@ export async function POST(request: NextRequest) {
   let accepting: string[] | undefined;
   let transitions: Array<{ from: string; symbol: string; to: string }> | undefined;
   let test: string | undefined;
+  let tests: string[] | undefined;
 
   try {
     const body = await request.json();
@@ -22,6 +23,7 @@ export async function POST(request: NextRequest) {
     accepting = body.accepting;
     transitions = body.transitions;
     test = body.test;
+    tests = body.tests;
 
     // Validar parámetros requeridos
     if (!states || !Array.isArray(states) || states.length === 0) {
@@ -30,6 +32,7 @@ export async function POST(request: NextRequest) {
           success: false,
           dfa: null,
           test_result: null,
+          test_results: null,
           error: "Parámetro 'states' requerido",
         },
         { status: 400 }
@@ -42,6 +45,7 @@ export async function POST(request: NextRequest) {
           success: false,
           dfa: null,
           test_result: null,
+          test_results: null,
           error: "Parámetro 'start' requerido",
         },
         { status: 400 }
@@ -54,6 +58,7 @@ export async function POST(request: NextRequest) {
           success: false,
           dfa: null,
           test_result: null,
+          test_results: null,
           error: "Parámetro 'accepting' requerido",
         },
         { status: 400 }
@@ -66,6 +71,7 @@ export async function POST(request: NextRequest) {
           success: false,
           dfa: null,
           test_result: null,
+          test_results: null,
           error: "Parámetro 'transitions' requerido",
         },
         { status: 400 }
@@ -77,7 +83,15 @@ export async function POST(request: NextRequest) {
 
     console.log("Calling Django API:", apiUrl.toString());
     console.log("BASE_URL:", BASE_URL);
-    console.log("Request body:", { states, start, accepting, transitions, test });
+    console.log("Request body:", { states, start, accepting, transitions, test, tests });
+
+    // Preparar el body: si hay tests (array), usarlo; si no, usar test (string) para compatibilidad
+    const requestBody: any = { states, start, accepting, transitions };
+    if (tests !== undefined && Array.isArray(tests)) {
+      requestBody.tests = tests;
+    } else if (test !== undefined) {
+      requestBody.test = test;
+    }
 
     // Hacer petición POST a la API de Django
     const response = await fetch(apiUrl.toString(), {
@@ -86,7 +100,7 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify({ states, start, accepting, transitions, test }),
+      body: JSON.stringify(requestBody),
       // Timeout de 30 segundos
       signal: AbortSignal.timeout(30000),
     });
@@ -113,6 +127,7 @@ export async function POST(request: NextRequest) {
           success: false,
           dfa: null,
           test_result: null,
+          test_results: null,
           error: `La API de Django devolvió una respuesta no válida (${response.status} ${response.statusText}). Verifica que la API esté corriendo en ${BASE_URL} y que la ruta /api/transitions-to-dfa/ exista. La respuesta recibida parece ser HTML, no JSON.`,
         },
         { status: 500 }
@@ -132,6 +147,7 @@ export async function POST(request: NextRequest) {
       success: data.success,
       hasDfa: !!data.dfa,
       hasTestResult: !!data.test_result,
+      hasTestResults: !!data.test_results,
     });
 
     return NextResponse.json(data);
@@ -145,6 +161,7 @@ export async function POST(request: NextRequest) {
           success: false,
           dfa: null,
           test_result: null,
+          test_results: null,
           error: "Timeout: La API de Django no respondió en el tiempo esperado. Verifica que esté corriendo.",
         },
         { status: 504 }
@@ -158,6 +175,7 @@ export async function POST(request: NextRequest) {
           success: false,
           dfa: null,
           test_result: null,
+          test_results: null,
           error: `Error de conexión: No se pudo conectar con la API de Django en ${BASE_URL}. Verifica que el servidor esté corriendo.`,
         },
         { status: 503 }
@@ -169,6 +187,7 @@ export async function POST(request: NextRequest) {
         success: false,
         dfa: null,
         test_result: null,
+        test_results: null,
         error:
           error instanceof Error
             ? `Error al conectar con la API: ${error.message}`

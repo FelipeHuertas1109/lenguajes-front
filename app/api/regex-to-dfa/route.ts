@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const regex = searchParams.get("regex");
   const test = searchParams.get("test") || undefined;
+  const testsParam = searchParams.get("tests") || undefined;
 
   if (!regex) {
     return NextResponse.json(
@@ -20,6 +21,7 @@ export async function GET(request: NextRequest) {
         regex: null,
         dfa: null,
         test_result: null,
+        test_results: null,
         error: "El parámetro 'regex' es requerido",
       },
       { status: 400 }
@@ -27,11 +29,20 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-
     // Construir URL para la API de Django
     const apiUrl = new URL("api/regex-to-dfa/", BASE_URL);
     apiUrl.searchParams.append("regex", regex);
-    if (test) {
+    
+    // Si hay tests (comma-separated), procesarlos
+    if (testsParam) {
+      const tests = testsParam.split(",").map(t => t.trim()).filter(t => t.length > 0);
+      if (tests.length > 0) {
+        // Enviar como parámetro tests (comma-separated) o hacer POST
+        // Por ahora, enviar como query param tests
+        apiUrl.searchParams.append("tests", tests.join(","));
+      }
+    } else if (test) {
+      // Compatibilidad hacia atrás: usar test si no hay tests
       apiUrl.searchParams.append("test", test);
     }
 
@@ -91,6 +102,7 @@ export async function GET(request: NextRequest) {
       success: data.success,
       hasDfa: !!data.dfa,
       hasTestResult: !!data.test_result,
+      hasTestResults: !!data.test_results,
     });
 
     return NextResponse.json(data);
@@ -144,11 +156,13 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   let regex: string | undefined;
   let test: string | undefined;
+  let tests: string[] | undefined;
 
   try {
     const body = await request.json();
     regex = body.regex;
     test = body.test;
+    tests = body.tests;
 
     if (!regex) {
       return NextResponse.json(
@@ -157,6 +171,7 @@ export async function POST(request: NextRequest) {
           regex: null,
           dfa: null,
           test_result: null,
+          test_results: null,
           error: "El campo 'regex' es requerido en el cuerpo de la petición",
         },
         { status: 400 }
@@ -168,7 +183,15 @@ export async function POST(request: NextRequest) {
 
     console.log("Calling Django API:", apiUrl.toString());
     console.log("BASE_URL:", BASE_URL);
-    console.log("Request body:", { regex, test });
+    console.log("Request body:", { regex, test, tests });
+
+    // Preparar el body: si hay tests (array), usarlo; si no, usar test (string) para compatibilidad
+    const requestBody: any = { regex };
+    if (tests !== undefined && Array.isArray(tests)) {
+      requestBody.tests = tests;
+    } else if (test !== undefined) {
+      requestBody.test = test;
+    }
 
     // Hacer petición POST a la API de Django
     const response = await fetch(apiUrl.toString(), {
@@ -177,7 +200,7 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify({ regex, test }),
+      body: JSON.stringify(requestBody),
       // Timeout de 30 segundos
       signal: AbortSignal.timeout(30000),
     });
@@ -224,6 +247,7 @@ export async function POST(request: NextRequest) {
       success: data.success,
       hasDfa: !!data.dfa,
       hasTestResult: !!data.test_result,
+      hasTestResults: !!data.test_results,
     });
 
     return NextResponse.json(data);
