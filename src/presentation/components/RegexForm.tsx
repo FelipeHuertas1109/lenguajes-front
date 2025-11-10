@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useImperativeHandle, forwardRef } from "react";
 import { useSweetAlert } from "../../utils/useSweetAlert";
 
 interface DFAData {
@@ -25,11 +25,27 @@ interface RegexFormProps {
   }) => void;
 }
 
-export default function RegexForm({ onResult }: RegexFormProps) {
+export interface RegexFormRef {
+  clearForm: () => void;
+}
+
+const RegexForm = forwardRef<RegexFormRef, RegexFormProps>(
+  ({ onResult }, ref) => {
   const [regex, setRegex] = useState("");
   const [testString, setTestString] = useState("");
   const [loading, setLoading] = useState(false);
   const { showError, showSuccess } = useSweetAlert();
+
+  // Función para limpiar el formulario
+  const clearForm = () => {
+    setRegex("");
+    setTestString("");
+  };
+
+  // Exponer métodos al componente padre mediante ref
+  useImperativeHandle(ref, () => ({
+    clearForm,
+  }));
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -239,7 +255,35 @@ export default function RegexForm({ onResult }: RegexFormProps) {
           ))}
         </div>
       </div>
+
+      {/* Botón Limpiar Todo */}
+      <div className="mt-4 pt-4 border-t border-gray-200">
+        <button
+          type="button"
+          onClick={clearForm}
+          className="w-full py-2 px-4 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors flex items-center justify-center gap-2"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            />
+          </svg>
+          Limpiar Todo
+        </button>
+      </div>
     </div>
   );
-}
+});
+
+RegexForm.displayName = "RegexForm";
+
+export default RegexForm;
 

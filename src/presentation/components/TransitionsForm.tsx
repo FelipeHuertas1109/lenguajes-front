@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useImperativeHandle, forwardRef } from "react";
 import { useSweetAlert } from "../../utils/useSweetAlert";
 
 interface DFAData {
@@ -30,7 +30,18 @@ interface TransitionsFormProps {
   }) => void;
 }
 
-export default function TransitionsForm({ onResult }: TransitionsFormProps) {
+export interface TransitionsFormRef {
+  clearForm: () => void;
+  setFormData: (data: {
+    states: string[];
+    start: string;
+    accepting: string[];
+    transitions: Array<{ from: string; symbol: string; to: string }>;
+  }) => void;
+}
+
+const TransitionsForm = forwardRef<TransitionsFormRef, TransitionsFormProps>(
+  ({ onResult }, ref) => {
   const [states, setStates] = useState<string[]>(["S0", "S1"]);
   const [newState, setNewState] = useState("");
   const [start, setStart] = useState("S0");
@@ -46,6 +57,41 @@ export default function TransitionsForm({ onResult }: TransitionsFormProps) {
   const [testString, setTestString] = useState("");
   const [loading, setLoading] = useState(false);
   const { showError, showSuccess, showWarning } = useSweetAlert();
+
+  // Función para limpiar el formulario
+  const clearForm = () => {
+    setStates(["S0", "S1"]);
+    setNewState("");
+    setStart("S0");
+    setAccepting(["S1"]);
+    setTransitions([{ from: "S0", symbol: "a", to: "S1" }]);
+    setNewTransition({ from: "S0", symbol: "", to: "S0" });
+    setTestString("");
+  };
+
+  // Función para establecer los datos del formulario
+  const setFormData = (data: {
+    states: string[];
+    start: string;
+    accepting: string[];
+    transitions: Array<{ from: string; symbol: string; to: string }>;
+  }) => {
+    setStates(data.states);
+    setStart(data.start);
+    setAccepting(data.accepting);
+    setTransitions(data.transitions);
+    // Actualizar newTransition con valores por defecto
+    if (data.states.length > 0) {
+      setNewTransition({ from: data.start, symbol: "", to: data.states[0] });
+    }
+    showSuccess("Datos copiados", "Las transiciones se han copiado al formulario");
+  };
+
+  // Exponer métodos al componente padre mediante ref
+  useImperativeHandle(ref, () => ({
+    clearForm,
+    setFormData,
+  }));
 
   const handleAddState = () => {
     if (newState && !states.includes(newState)) {
@@ -468,7 +514,35 @@ export default function TransitionsForm({ onResult }: TransitionsFormProps) {
           )}
         </button>
       </form>
+
+      {/* Botón Limpiar Todo */}
+      <div className="mt-4 pt-4 border-t border-gray-200">
+        <button
+          type="button"
+          onClick={clearForm}
+          className="w-full py-2 px-4 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors flex items-center justify-center gap-2"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            />
+          </svg>
+          Limpiar Todo
+        </button>
+      </div>
     </div>
   );
-}
+});
+
+TransitionsForm.displayName = "TransitionsForm";
+
+export default TransitionsForm;
 

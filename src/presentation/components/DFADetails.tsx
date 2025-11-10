@@ -25,9 +25,15 @@ interface DFADetailsProps {
   testResult: TestResult | null;
   testResults?: TestResult[] | null;
   regex?: string;
+  onCopyToTransitions?: (data: {
+    states: string[];
+    start: string;
+    accepting: string[];
+    transitions: Array<{ from: string; symbol: string; to: string }>;
+  }) => void;
 }
 
-export default function DFADetails({ dfa, testResult, testResults, regex }: DFADetailsProps) {
+export default function DFADetails({ dfa, testResult, testResults, regex, onCopyToTransitions }: DFADetailsProps) {
   const [downloading, setDownloading] = useState(false);
   const { showError, showSuccess } = useSweetAlert();
 
@@ -205,9 +211,42 @@ export default function DFADetails({ dfa, testResult, testResults, regex }: DFAD
       </div>
 
       <div className="mb-6">
-        <p className="text-sm font-semibold text-gray-700 mb-3">
-          Transiciones ({dfa.transitions.length})
-        </p>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm font-semibold text-gray-700">
+            Transiciones ({dfa.transitions.length})
+          </p>
+          {onCopyToTransitions && regex && (
+            <button
+              onClick={() => {
+                if (dfa) {
+                  onCopyToTransitions({
+                    states: dfa.states,
+                    start: dfa.start,
+                    accepting: dfa.accepting,
+                    transitions: dfa.transitions,
+                  });
+                }
+              }}
+              className="px-3 py-1.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+              title="Copiar transiciones al formulario de transiciones"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                />
+              </svg>
+              Copiar a Transiciones
+            </button>
+          )}
+        </div>
         <div className="max-h-48 overflow-y-auto space-y-2">
           {dfa.transitions.map((transition, index) => (
             <div

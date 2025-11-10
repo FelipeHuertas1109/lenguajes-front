@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import dynamic from "next/dynamic";
-import RegexForm from "@/src/presentation/components/RegexForm";
-import TransitionsForm from "@/src/presentation/components/TransitionsForm";
+import RegexForm, { RegexFormRef } from "@/src/presentation/components/RegexForm";
+import TransitionsForm, { TransitionsFormRef } from "@/src/presentation/components/TransitionsForm";
 import DFADetails from "@/src/presentation/components/DFADetails";
 import RegexFileProcessor from "@/src/presentation/components/RegexFileProcessor";
 
@@ -64,6 +64,10 @@ export default function Home() {
     accepted: boolean;
   }[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // Referencias a los formularios
+  const regexFormRef = useRef<RegexFormRef>(null);
+  const transitionsFormRef = useRef<TransitionsFormRef>(null);
 
   const handleRegexResult = (data: {
     regex: string;
@@ -90,6 +94,25 @@ export default function Home() {
     setTestResult(data.testResult);
     setTestResults(data.testResults || null);
     setError(data.error);
+  };
+
+  // Función para copiar datos del DFA al formulario de transiciones
+  const handleCopyToTransitions = (data: {
+    states: string[];
+    start: string;
+    accepting: string[];
+    transitions: Array<{ from: string; symbol: string; to: string }>;
+  }) => {
+    // Cambiar al formulario de transiciones primero
+    setInputType("transitions");
+    // Usar requestAnimationFrame para asegurar que el DOM se haya actualizado
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (transitionsFormRef.current) {
+          transitionsFormRef.current.setFormData(data);
+        }
+      });
+    });
   };
 
   return (
@@ -121,6 +144,7 @@ export default function Home() {
                   type="button"
                   onClick={() => {
                     setInputType("regex");
+                    // Solo limpiar los resultados, no el estado de los formularios
                     setDfa(null);
                     setRegex("");
                     setTestResult(null);
@@ -139,6 +163,7 @@ export default function Home() {
                   type="button"
                   onClick={() => {
                     setInputType("transitions");
+                    // Solo limpiar los resultados, no el estado de los formularios
                     setDfa(null);
                     setRegex("");
                     setTestResult(null);
@@ -156,12 +181,16 @@ export default function Home() {
               </div>
             </div>
             
-            {/* Formulario correspondiente */}
-            {inputType === "regex" ? (
-              <RegexForm onResult={handleRegexResult} />
-            ) : (
-              <TransitionsForm onResult={handleTransitionsResult} />
-            )}
+            {/* Formulario correspondiente - Renderizar ambos pero ocultar el inactivo para preservar estado */}
+            <div className={inputType === "regex" ? "" : "hidden"}>
+              <RegexForm ref={regexFormRef} onResult={handleRegexResult} />
+            </div>
+            <div className={inputType === "transitions" ? "" : "hidden"}>
+              <TransitionsForm 
+                ref={transitionsFormRef} 
+                onResult={handleTransitionsResult}
+              />
+            </div>
           </div>
 
           {/* Right Column - Visualization */}
@@ -191,7 +220,13 @@ export default function Home() {
         {/* Details Section */}
         {(dfa || error) && (
           <div className="mb-6">
-            <DFADetails dfa={dfa} testResult={testResult} testResults={testResults} regex={regex} />
+            <DFADetails 
+              dfa={dfa} 
+              testResult={testResult} 
+              testResults={testResults} 
+              regex={regex}
+              onCopyToTransitions={handleCopyToTransitions}
+            />
           </div>
         )}
 
