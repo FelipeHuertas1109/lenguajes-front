@@ -25,6 +25,7 @@ interface TransitionsFormProps {
   onResult: (data: {
     dfa: DFAData | null;
     testResult: { string: string; accepted: boolean } | null;
+    testResults?: { string: string; accepted: boolean }[] | null;
     error: string | null;
   }) => void;
 }
@@ -187,35 +188,28 @@ export default function TransitionsForm({ onResult }: TransitionsFormProps) {
       const data = await response.json();
 
       if (data.success) {
-        // Priorizar test_results sobre test_result
-        const testResult = data.test_results && data.test_results.length > 0 
-          ? data.test_results[0] // Usar el primero para compatibilidad
+        // Si hay múltiples resultados, usar test_results; si no, usar test_result para compatibilidad
+        const testResults = data.test_results && data.test_results.length > 0 
+          ? data.test_results 
+          : null;
+        const testResult = testResults && testResults.length > 0
+          ? testResults[0] // Para compatibilidad con componentes que esperan testResult
           : data.test_result;
         
         onResult({
           dfa: data.dfa,
           testResult: testResult,
+          testResults: testResults,
           error: null,
         });
         
-        // Mostrar resultados si hay múltiples cadenas
-        if (data.test_results && data.test_results.length > 0) {
-          const resultsText = data.test_results
-            .map((r: { string: string; accepted: boolean }) => 
-              `"${r.string}": ${r.accepted ? "✓ Aceptada" : "✗ Rechazada"}`
-            )
-            .join("\n");
+        // Mostrar resultados si hay múltiples cadenas (solo como confirmación, ya que se muestran en DFADetails)
+        if (data.test_results && data.test_results.length > 1) {
+          const acceptedCount = data.test_results.filter((r: { accepted: boolean }) => r.accepted).length;
+          const rejectedCount = data.test_results.length - acceptedCount;
           showSuccess(
             "Resultados de las pruebas",
-            resultsText
-          );
-        } else if (data.test_result) {
-          const resultText = data.test_result.accepted
-            ? `La cadena "${data.test_result.string}" fue aceptada`
-            : `La cadena "${data.test_result.string}" fue rechazada`;
-          showSuccess(
-            data.test_result.accepted ? "Cadena aceptada" : "Cadena rechazada",
-            resultText
+            `Se procesaron ${data.test_results.length} cadenas: ${acceptedCount} aceptadas, ${rejectedCount} rechazadas`
           );
         }
       } else {

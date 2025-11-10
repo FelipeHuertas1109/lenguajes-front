@@ -23,10 +23,11 @@ interface TestResult {
 interface DFADetailsProps {
   dfa: DFAData | null;
   testResult: TestResult | null;
+  testResults?: TestResult[] | null;
   regex?: string;
 }
 
-export default function DFADetails({ dfa, testResult, regex }: DFADetailsProps) {
+export default function DFADetails({ dfa, testResult, testResults, regex }: DFADetailsProps) {
   const [downloading, setDownloading] = useState(false);
   const { showError, showSuccess } = useSweetAlert();
 
@@ -229,7 +230,81 @@ export default function DFADetails({ dfa, testResult, regex }: DFADetailsProps) 
         </div>
       </div>
 
-      {testResult && (
+      {/* Mostrar múltiples resultados si existen */}
+      {testResults && testResults.length > 0 && (
+        <div className="space-y-3">
+          <h4 className="text-sm font-semibold text-gray-700 mb-3">
+            Resultados de las Pruebas ({testResults.length})
+          </h4>
+          {testResults.map((result, index) => (
+            <div
+              key={index}
+              className={`p-4 rounded-lg border-2 ${
+                result.accepted
+                  ? "bg-green-50 border-green-300"
+                  : "bg-red-50 border-red-300"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                    result.accepted
+                      ? "bg-green-500"
+                      : "bg-red-500"
+                  }`}
+                >
+                  {result.accepted ? (
+                    <svg
+                      className="w-6 h-6 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  ) : (
+                    <svg
+                      className="w-6 h-6 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  )}
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-800">
+                    Cadena: <code className="font-mono">{result.string}</code>
+                  </p>
+                  <p
+                    className={`text-sm font-medium ${
+                      result.accepted ? "text-green-700" : "text-red-700"
+                    }`}
+                  >
+                    {result.accepted
+                      ? "✓ Cadena aceptada"
+                      : "✗ Cadena rechazada"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      
+      {/* Mostrar un solo resultado si no hay múltiples resultados */}
+      {(!testResults || testResults.length === 0) && testResult && (
         <div
           className={`p-4 rounded-lg border-2 ${
             testResult.accepted

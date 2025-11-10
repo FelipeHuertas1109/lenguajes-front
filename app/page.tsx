@@ -59,28 +59,36 @@ export default function Home() {
     string: string;
     accepted: boolean;
   } | null>(null);
+  const [testResults, setTestResults] = useState<{
+    string: string;
+    accepted: boolean;
+  }[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleRegexResult = (data: {
     regex: string;
     dfa: DFAData | null;
     testResult: { string: string; accepted: boolean } | null;
+    testResults?: { string: string; accepted: boolean }[] | null;
     error: string | null;
   }) => {
     setDfa(data.dfa);
     setRegex(data.regex);
     setTestResult(data.testResult);
+    setTestResults(data.testResults || null);
     setError(data.error);
   };
 
   const handleTransitionsResult = (data: {
     dfa: DFAData | null;
     testResult: { string: string; accepted: boolean } | null;
+    testResults?: { string: string; accepted: boolean }[] | null;
     error: string | null;
   }) => {
     setDfa(data.dfa);
     setRegex(""); // No hay regex cuando se usan transiciones
     setTestResult(data.testResult);
+    setTestResults(data.testResults || null);
     setError(data.error);
   };
 
@@ -116,6 +124,7 @@ export default function Home() {
                     setDfa(null);
                     setRegex("");
                     setTestResult(null);
+                    setTestResults(null);
                     setError(null);
                   }}
                   className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-colors ${
@@ -133,6 +142,7 @@ export default function Home() {
                     setDfa(null);
                     setRegex("");
                     setTestResult(null);
+                    setTestResults(null);
                     setError(null);
                   }}
                   className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-colors ${
@@ -181,7 +191,7 @@ export default function Home() {
         {/* Details Section */}
         {(dfa || error) && (
           <div className="mb-6">
-            <DFADetails dfa={dfa} testResult={testResult} regex={regex} />
+            <DFADetails dfa={dfa} testResult={testResult} testResults={testResults} regex={regex} />
           </div>
         )}
 
