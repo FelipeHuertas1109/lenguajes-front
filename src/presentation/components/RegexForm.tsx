@@ -123,10 +123,10 @@ const RegexForm = forwardRef<RegexFormRef, RegexFormProps>(
   };
 
   const examples = [
-    { regex: "a*b", description: "Cero o más 'a' seguidas de 'b'" },
-    { regex: "(a|b)*", description: "Cualquier combinación de 'a' y 'b'" },
-    { regex: "a+b", description: "Una o más 'a' seguidas de 'b'" },
-    { regex: "a?b", description: "Opcionalmente 'a' seguida de 'b'" },
+    { regex: "A*B", description: "Cero o más 'A' seguidas de 'B'" },
+    { regex: "(A|B)*", description: "Cualquier combinación de 'A' y 'B'" },
+    { regex: "A+B", description: "Una o más 'A' seguidas de 'B'" },
+    { regex: "A?B", description: "Opcionalmente 'A' seguida de 'B'" },
   ];
 
   return (
@@ -144,9 +144,9 @@ const RegexForm = forwardRef<RegexFormRef, RegexFormProps>(
               type="text"
               id="regex"
               value={regex}
-              onChange={(e) => setRegex(e.target.value)}
-              placeholder="Ej: a*b, (a|b)*, a+b"
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-lg font-mono text-black placeholder:text-gray-400"
+              onChange={(e) => setRegex(e.target.value.toUpperCase())}
+              placeholder="Ej: A*B, (A|B)*, A+B"
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-lg font-mono text-black placeholder:text-gray-400 uppercase"
               required
             />
             <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -177,9 +177,9 @@ const RegexForm = forwardRef<RegexFormRef, RegexFormProps>(
             type="text"
             id="test"
             value={testString}
-            onChange={(e) => setTestString(e.target.value)}
-            placeholder="Ej: aaab,b,aaa (múltiples cadenas separadas por comas)"
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-lg font-mono text-black placeholder:text-gray-400"
+            onChange={(e) => setTestString(e.target.value.toUpperCase())}
+            placeholder="Ej: AAAB,B,AAA (múltiples cadenas separadas por comas)"
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-lg font-mono text-black placeholder:text-gray-400 uppercase"
           />
         </div>
 
