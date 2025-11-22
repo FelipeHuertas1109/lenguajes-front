@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import RegexForm, { RegexFormRef } from "@/src/presentation/components/RegexForm";
 import TransitionsForm, { TransitionsFormRef } from "@/src/presentation/components/TransitionsForm";
 import AlphabetPredictor, { AlphabetPredictorRef } from "@/src/presentation/components/AlphabetPredictor";
+import RegexSearch, { RegexSearchRef } from "@/src/presentation/components/RegexSearch";
 import DFADetails from "@/src/presentation/components/DFADetails";
 import RegexFileProcessor from "@/src/presentation/components/RegexFileProcessor";
 
@@ -51,13 +52,23 @@ interface DFAData {
 }
 
 type InputType = "regex" | "transitions";
-type RegexViewType = "dfa" | "alphabet";
+type RegexViewType = "dfa" | "alphabet" | "search";
 
 interface AlphabetResponse {
   success: boolean;
   regex: string;
   alphabet: string[] | null;
   probabilities: { [symbol: string]: number } | null;
+  error: string | null;
+}
+
+interface SearchResponse {
+  success: boolean;
+  query: string | null;
+  id: number | null;
+  results: Array<{ id: number; regex: string }>;
+  total: number;
+  limit: number;
   error: string | null;
 }
 
@@ -81,6 +92,78 @@ export default function Home() {
   const regexFormRef = useRef<RegexFormRef>(null);
   const transitionsFormRef = useRef<TransitionsFormRef>(null);
   const alphabetPredictorRef = useRef<AlphabetPredictorRef>(null);
+  const regexSearchRef = useRef<RegexSearchRef>(null);
+  
+  // Estado para resultados de búsqueda
+  const [searchResult, setSearchResult] = useState<SearchResponse | null>(null);
+  
+  // Estado para predicción de AcepNet
+  interface AcepNetPrediction {
+    success: boolean;
+    dfa_id: number;
+    afd_info: {
+      id: number;
+      regex: string;
+      alphabet: string;
+      states: string;
+      accepting: string;
+    } | null;
+    predictions: Array<{
+      string: string;
+      y1: {
+        probability: number;
+        predicted: boolean;
+        ground_truth: boolean | null;
+        correct: boolean | null;
+        alphabet_mismatch: boolean;
+      };
+      y2: {
+        probability: number;
+        predicted: boolean;
+      };
+    }>;
+    error: string | null;
+  }
+  const [acepNetPrediction, setAcepNetPrediction] = useState<AcepNetPrediction | null>(null);
+  const [selectedDfaId, setSelectedDfaId] = useState<number | null>(null);
+  const [predictionStrings, setPredictionStrings] = useState<string>("");
+  const [predicting, setPredicting] = useState(false);
+
+  const handleAcepNetPredict = async (dfaId: number, strings: string[]) => {
+    if (strings.length === 0) {
+      return;
+    }
+
+    setPredicting(true);
+    setAcepNetPrediction(null);
+
+    try {
+      const response = await fetch("/api/acepnet-predict/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          dfa_id: dfaId,
+          strings: strings,
+        }),
+      });
+
+      const data: AcepNetPrediction = await response.json();
+      setAcepNetPrediction(data);
+    } catch (error) {
+      console.error("Error predicting with AcepNet:", error);
+      setAcepNetPrediction({
+        success: false,
+        dfa_id: dfaId,
+        afd_info: null,
+        predictions: [],
+        error: error instanceof Error ? error.message : "Error de conexión",
+      });
+    } finally {
+      setPredicting(false);
+    }
+  };
 
   const handleRegexResult = (data: {
     regex: string;
@@ -114,6 +197,20 @@ export default function Home() {
     setAlphabetResult(data);
     // Limpiar datos de DFA cuando se predice alfabeto
     setDfa(null);
+    setTestResult(null);
+    setTestResults(null);
+    setError(data.error);
+    setSearchResult(null); // Limpiar resultados de búsqueda
+    setAcepNetPrediction(null);
+    setSelectedDfaId(null);
+    setPredictionStrings("");
+  };
+
+  const handleSearchResult = (data: SearchResponse) => {
+    setSearchResult(data);
+    // Limpiar otros resultados cuando se busca
+    setDfa(null);
+    setAlphabetResult(null);
     setTestResult(null);
     setTestResults(null);
     setError(data.error);
@@ -212,7 +309,7 @@ export default function Home() {
                 <label className="block text-sm font-semibold text-gray-900 mb-3">
                   Vista
                 </label>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -220,9 +317,13 @@ export default function Home() {
                       setDfa(null);
                       setTestResult(null);
                       setTestResults(null);
-                      setError(null);
-                      setAlphabetResult(null);
-                    }}
+                    setError(null);
+                    setAlphabetResult(null);
+                    setSearchResult(null);
+                    setAcepNetPrediction(null);
+                    setSelectedDfaId(null);
+                    setPredictionStrings("");
+                  }}
                     className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-colors ${
                       regexViewType === "dfa"
                         ? "bg-indigo-600 text-white"
@@ -238,9 +339,13 @@ export default function Home() {
                       setDfa(null);
                       setTestResult(null);
                       setTestResults(null);
-                      setError(null);
-                      setAlphabetResult(null);
-                    }}
+                    setError(null);
+                    setAlphabetResult(null);
+                    setSearchResult(null);
+                    setAcepNetPrediction(null);
+                    setSelectedDfaId(null);
+                    setPredictionStrings("");
+                  }}
                     className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-colors ${
                       regexViewType === "alphabet"
                         ? "bg-purple-600 text-white"
@@ -248,6 +353,28 @@ export default function Home() {
                     }`}
                   >
                     Predecir Alfabeto
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRegexViewType("search");
+                      setDfa(null);
+                      setTestResult(null);
+                      setTestResults(null);
+                    setError(null);
+                    setAlphabetResult(null);
+                    setSearchResult(null);
+                    setAcepNetPrediction(null);
+                    setSelectedDfaId(null);
+                    setPredictionStrings("");
+                  }}
+                    className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-colors ${
+                      regexViewType === "search"
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-100 text-gray-900 hover:bg-gray-200"
+                    }`}
+                  >
+                    Buscar Regex
                   </button>
                 </div>
               </div>
@@ -264,6 +391,11 @@ export default function Home() {
                 <AlphabetPredictor ref={alphabetPredictorRef} onResult={handleAlphabetResult} />
               </div>
             )}
+            {inputType === "regex" && regexViewType === "search" && (
+              <div>
+                <RegexSearch ref={regexSearchRef} onResult={handleSearchResult} />
+              </div>
+            )}
             {inputType === "transitions" && (
               <div>
                 <TransitionsForm 
@@ -276,8 +408,395 @@ export default function Home() {
 
           {/* Right Column - Visualization */}
           <div className="lg:col-span-2">
-            {/* Visualización de DFA - solo mostrar cuando no es vista de alfabeto */}
-            {!(inputType === "regex" && regexViewType === "alphabet") && (
+            {/* Visualización de Búsqueda - solo mostrar cuando es vista de búsqueda */}
+            {inputType === "regex" && regexViewType === "search" && (
+              <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 min-h-[600px]">
+                <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                  <svg
+                    className="w-6 h-6 text-blue-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                  Resultados de Búsqueda
+                </h2>
+                {searchResult && searchResult.success && searchResult.results.length > 0 ? (
+                  <div className="space-y-6">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <p className="text-sm text-blue-800">
+                        <strong>Total encontrados:</strong> {searchResult.total}
+                        {searchResult.total > searchResult.limit && (
+                          <span className="ml-2">
+                            (mostrando {searchResult.limit} de {searchResult.total})
+                          </span>
+                        )}
+                      </p>
+                      {searchResult.query && (
+                        <p className="text-sm text-blue-700 mt-1">
+                          <strong>Búsqueda:</strong> "{searchResult.query}"
+                        </p>
+                      )}
+                      {searchResult.id !== null && (
+                        <p className="text-sm text-blue-700 mt-1">
+                          <strong>ID buscado:</strong> {searchResult.id}
+                        </p>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                      {searchResult.results.map((item) => (
+                        <div
+                          key={item.id}
+                          className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-semibold text-gray-600">
+                              ID: {item.id}
+                            </span>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  setSelectedDfaId(item.id);
+                                  setPredictionStrings("");
+                                  setAcepNetPrediction(null);
+                                }}
+                                className="px-3 py-1 bg-green-600 text-white text-xs font-semibold rounded hover:bg-green-700 transition-colors"
+                              >
+                                Predecir con AcepNet
+                              </button>
+                              <button
+                                onClick={() => {
+                                  // Copiar regex al formulario de regex
+                                  setInputType("regex");
+                                  setRegexViewType("dfa");
+                                  setRegex(item.regex);
+                                  // Usar requestAnimationFrame para asegurar que el componente esté montado
+                                  requestAnimationFrame(() => {
+                                    if (regexFormRef.current) {
+                                      regexFormRef.current.setRegex(item.regex);
+                                    }
+                                  });
+                                }}
+                                className="px-3 py-1 bg-indigo-600 text-white text-xs font-semibold rounded hover:bg-indigo-700 transition-colors"
+                              >
+                                Usar esta regex
+                              </button>
+                            </div>
+                          </div>
+                          <code className="text-base font-mono text-gray-900 block break-all bg-white p-3 rounded border border-gray-300">
+                            {item.regex}
+                          </code>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Sección de Predicción con AcepNet */}
+                    {selectedDfaId !== null && (
+                      <div className="mt-6 pt-6 border-t-2 border-green-300">
+                        <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                          <svg
+                            className="w-6 h-6 text-green-600"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                          Predicción con AcepNet
+                        </h3>
+                        
+                        {selectedDfaId !== null && (
+                          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p className="text-sm font-semibold text-blue-800 mb-2">
+                              AFD ID: {selectedDfaId}
+                            </p>
+                            {searchResult && (
+                              <>
+                                {searchResult.results.find((r) => r.id === selectedDfaId) && (
+                                  <>
+                                    <p className="text-sm text-blue-700">
+                                      <strong>Regex:</strong>{" "}
+                                      <code className="font-mono">
+                                        {searchResult.results.find((r) => r.id === selectedDfaId)
+                                          ?.regex}
+                                      </code>
+                                    </p>
+                                  </>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        )}
+
+                        {acepNetPrediction?.afd_info && (
+                          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                            <p className="text-sm font-semibold text-green-800 mb-2">
+                              AFD ID: {acepNetPrediction.afd_info.id}
+                            </p>
+                            <p className="text-sm text-green-700">
+                              <strong>Regex:</strong>{" "}
+                              <code className="font-mono">{acepNetPrediction.afd_info.regex}</code>
+                            </p>
+                            <p className="text-sm text-green-700 mt-1">
+                              <strong>Alfabeto:</strong> {acepNetPrediction.afd_info.alphabet}
+                            </p>
+                          </div>
+                        )}
+
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                              Cadenas a evaluar (separadas por comas)
+                            </label>
+                            <textarea
+                              value={predictionStrings}
+                              onChange={(e) => setPredictionStrings(e.target.value)}
+                              placeholder="Ej: C, LC, LCIG, X"
+                              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-base font-mono text-black placeholder:text-gray-400"
+                              rows={3}
+                            />
+                            <p className="mt-2 text-xs text-gray-500">
+                              Ingresa las cadenas que deseas evaluar, separadas por comas
+                            </p>
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              const strings = predictionStrings
+                                .split(",")
+                                .map((s) => s.trim())
+                                .filter((s) => s.length > 0);
+                              if (strings.length > 0 && selectedDfaId !== null) {
+                                handleAcepNetPredict(selectedDfaId, strings);
+                              }
+                            }}
+                            disabled={predicting || !predictionStrings.trim() || selectedDfaId === null}
+                            className="w-full py-3 px-4 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                          >
+                            {predicting ? (
+                              <>
+                                <svg
+                                  className="animate-spin h-5 w-5 text-white"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <circle
+                                    className="opacity-25"
+                                    cx="12"
+                                    cy="12"
+                                    r="10"
+                                    stroke="currentColor"
+                                    strokeWidth="4"
+                                  ></circle>
+                                  <path
+                                    className="opacity-75"
+                                    fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                  ></path>
+                                </svg>
+                                Prediciendo...
+                              </>
+                            ) : (
+                              <>
+                                <svg
+                                  className="w-5 h-5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                  />
+                                </svg>
+                                Predecir con AcepNet
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Resultados de Predicción */}
+                        {acepNetPrediction && acepNetPrediction.success && acepNetPrediction.predictions.length > 0 && (
+                          <div className="mt-6 space-y-4">
+                            <h4 className="text-lg font-semibold text-gray-900">
+                              Resultados de Predicción
+                            </h4>
+                            <div className="space-y-3 max-h-96 overflow-y-auto">
+                              {acepNetPrediction.predictions.map((pred, index) => (
+                                <div
+                                  key={index}
+                                  className="p-4 bg-gray-50 rounded-lg border border-gray-200"
+                                >
+                                  <div className="flex items-center justify-between mb-3">
+                                    <code className="text-base font-mono font-bold text-gray-900">
+                                      "{pred.string}"
+                                    </code>
+                                    <div className="flex items-center gap-2">
+                                      {pred.y1.correct !== null && (
+                                        <span
+                                          className={`px-2 py-1 text-xs font-semibold rounded ${
+                                            pred.y1.correct
+                                              ? "bg-green-100 text-green-800"
+                                              : "bg-red-100 text-red-800"
+                                          }`}
+                                        >
+                                          {pred.y1.correct ? "✓ Correcto" : "✗ Incorrecto"}
+                                        </span>
+                                      )}
+                                      {pred.y1.predicted ? (
+                                        <span className="px-3 py-1 bg-green-600 text-white text-xs font-semibold rounded">
+                                          ACEPTA
+                                        </span>
+                                      ) : (
+                                        <span className="px-3 py-1 bg-red-600 text-white text-xs font-semibold rounded">
+                                          RECHAZA
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <div>
+                                      <div className="flex items-center justify-between mb-1">
+                                        <span className="text-sm font-semibold text-gray-700">
+                                          Y1 (Pertenencia): {(pred.y1.probability * 100).toFixed(2)}%
+                                        </span>
+                                        {pred.y1.ground_truth !== null && (
+                                          <span className="text-xs text-gray-500">
+                                            GT: {pred.y1.ground_truth ? "ACEPTA" : "RECHAZA"}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="w-full bg-gray-200 rounded-full h-2">
+                                        <div
+                                          className={`h-2 rounded-full ${
+                                            pred.y1.predicted ? "bg-green-600" : "bg-red-600"
+                                          }`}
+                                          style={{ width: `${pred.y1.probability * 100}%` }}
+                                        ></div>
+                                      </div>
+                                    </div>
+
+                                    <div>
+                                      <div className="flex items-center justify-between mb-1">
+                                        <span className="text-sm font-semibold text-gray-700">
+                                          Y2 (Cadena Compartida): {(pred.y2.probability * 100).toFixed(2)}%
+                                        </span>
+                                        {pred.y2.predicted && (
+                                          <span className="text-xs text-green-600 font-semibold">
+                                            Compartida
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="w-full bg-gray-200 rounded-full h-2">
+                                        <div
+                                          className={`h-2 rounded-full ${
+                                            pred.y2.predicted ? "bg-blue-600" : "bg-gray-400"
+                                          }`}
+                                          style={{ width: `${pred.y2.probability * 100}%` }}
+                                        ></div>
+                                      </div>
+                                    </div>
+
+                                    {pred.y1.alphabet_mismatch && (
+                                      <p className="text-xs text-orange-600 font-semibold mt-2">
+                                        ⚠ La cadena contiene caracteres fuera del alfabeto del AFD
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {acepNetPrediction && !acepNetPrediction.success && acepNetPrediction.error && (
+                          <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                            <p className="text-sm font-semibold text-red-800 mb-1">Error</p>
+                            <p className="text-sm text-red-600">{acepNetPrediction.error}</p>
+                          </div>
+                        )}
+
+                        <button
+                          onClick={() => {
+                            setSelectedDfaId(null);
+                            setPredictionStrings("");
+                            setAcepNetPrediction(null);
+                          }}
+                          className="mt-4 w-full py-2 px-4 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 transition-colors"
+                        >
+                          Cerrar Predicción
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : searchResult && !searchResult.success ? (
+                  <div className="flex items-center justify-center h-full min-h-[400px]">
+                    <div className="text-center text-gray-500">
+                      <svg
+                        className="mx-auto h-16 w-16 text-red-400 mb-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <p className="text-lg font-medium text-red-600 mb-2">
+                        Error en la búsqueda
+                      </p>
+                      <p className="text-sm text-gray-600">{searchResult.error}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-full min-h-[400px]">
+                    <div className="text-center text-gray-500">
+                      <svg
+                        className="mx-auto h-16 w-16 text-gray-400 mb-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                      <p className="text-lg font-medium">
+                        Busca expresiones regulares en el dataset
+                      </p>
+                      <p className="text-sm mt-2">
+                        Puedes buscar por texto o por ID (0-5999)
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Visualización de DFA - solo mostrar cuando no es vista de alfabeto ni búsqueda */}
+            {!(inputType === "regex" && (regexViewType === "alphabet" || regexViewType === "search")) && (
               <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
                 <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                   <svg

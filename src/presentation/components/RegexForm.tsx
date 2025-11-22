@@ -27,6 +27,7 @@ interface RegexFormProps {
 
 export interface RegexFormRef {
   clearForm: () => void;
+  setRegex: (regex: string) => void;
 }
 
 const RegexForm = forwardRef<RegexFormRef, RegexFormProps>(
@@ -45,6 +46,9 @@ const RegexForm = forwardRef<RegexFormRef, RegexFormProps>(
   // Exponer métodos al componente padre mediante ref
   useImperativeHandle(ref, () => ({
     clearForm,
+    setRegex: (regexValue: string) => {
+      setRegex(regexValue);
+    },
   }));
 
   const handleSubmit = async (e: FormEvent) => {
