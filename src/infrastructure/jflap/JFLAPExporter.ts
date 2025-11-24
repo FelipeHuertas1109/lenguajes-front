@@ -8,6 +8,13 @@ export class JFLAPExporter {
    * Convierte un DFA serializado a formato XML compatible con JFLAP
    */
   static exportToJFLAP(dfa: DFASerialized): string {
+    // Crear mapeo de IDs de string a IDs numéricos
+    // JFLAP requiere IDs numéricos (0, 1, 2...), no strings ("S0", "S1"...)
+    const stateIdMap = new Map<string, number>();
+    dfa.states.forEach((stateId, index) => {
+      stateIdMap.set(stateId, index);
+    });
+
     // Generar estados con coordenadas distribuidas en un círculo
     const states = dfa.states.map((stateId, index) => {
       const isInitial = stateId === dfa.start;
@@ -24,7 +31,9 @@ export class JFLAPExporter {
       const x = centerX + radius * Math.cos(angle);
       const y = centerY + radius * Math.sin(angle);
 
-      let stateXml = `    <state id="${this.escapeXml(stateId)}" name="${this.escapeXml(stateId)}">\n`;
+      // Usar ID numérico para JFLAP, pero mantener el nombre original
+      const numericId = stateIdMap.get(stateId)!;
+      let stateXml = `    <state id="${numericId}" name="${this.escapeXml(stateId)}">\n`;
       stateXml += `      <x>${x.toFixed(2)}</x>\n`;
       stateXml += `      <y>${y.toFixed(2)}</y>\n`;
       if (isInitial) {
@@ -37,12 +46,14 @@ export class JFLAPExporter {
       return stateXml;
     }).join("\n");
 
-    // Generar transiciones
+    // Generar transiciones usando IDs numéricos
     const transitions = dfa.transitions.map((transition) => {
       const symbol = transition.symbol === "" ? "λ" : transition.symbol;
+      const fromId = stateIdMap.get(transition.from)!;
+      const toId = stateIdMap.get(transition.to)!;
       return `    <transition>
-      <from>${this.escapeXml(transition.from)}</from>
-      <to>${this.escapeXml(transition.to)}</to>
+      <from>${fromId}</from>
+      <to>${toId}</to>
       <read>${this.escapeXml(symbol)}</read>
     </transition>`;
     }).join("\n");

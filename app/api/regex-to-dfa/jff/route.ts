@@ -90,6 +90,36 @@ export async function GET(request: NextRequest) {
 
     // Convertir DFA a formato JFLAP
     const dfa: DFASerialized = data.dfa;
+    
+    // 🔍 DEBUG: Loggear el DFA recibido del backend
+    console.log("=== DEBUG DFA RECIBIDO DEL BACKEND (GET) ===");
+    console.log("Regex:", regex);
+    console.log("Estados:", JSON.stringify(dfa.states));
+    console.log("Estado inicial:", dfa.start);
+    console.log("Estados aceptación:", JSON.stringify(dfa.accepting));
+    console.log("Número de transiciones:", dfa.transitions.length);
+    
+    // Verificar IDs problemáticos
+    const hasNegativeIds = dfa.states.some(id => {
+      const numId = parseInt(id);
+      return !isNaN(numId) && numId < 0;
+    });
+    
+    const uniqueStates = new Set(dfa.states);
+    const hasDuplicates = uniqueStates.size !== dfa.states.length;
+    
+    if (hasNegativeIds) {
+      console.error("⚠️ ALERTA: Se detectaron IDs negativos en el DFA del backend!");
+      console.error("Estados:", dfa.states);
+    }
+    
+    if (hasDuplicates) {
+      console.error("⚠️ ALERTA: Se detectaron IDs duplicados en el DFA del backend!");
+      console.error("Estados:", dfa.states);
+      console.error("Estados únicos:", Array.from(uniqueStates));
+    }
+    console.log("==============================================");
+    
     const jflapXml = JFLAPExporter.exportToJFLAP(dfa);
     const fileName = JFLAPExporter.generateFileName(regex);
     
@@ -225,6 +255,36 @@ export async function POST(request: NextRequest) {
 
     // Convertir DFA a formato JFLAP
     const dfa: DFASerialized = data.dfa;
+    
+    // 🔍 DEBUG: Loggear el DFA recibido del backend
+    console.log("=== DEBUG DFA RECIBIDO DEL BACKEND (POST) ===");
+    console.log("Regex:", regex);
+    console.log("Estados:", JSON.stringify(dfa.states));
+    console.log("Estado inicial:", dfa.start);
+    console.log("Estados aceptación:", JSON.stringify(dfa.accepting));
+    console.log("Número de transiciones:", dfa.transitions.length);
+    
+    // Verificar IDs problemáticos
+    const hasNegativeIds = dfa.states.some(id => {
+      const numId = parseInt(id);
+      return !isNaN(numId) && numId < 0;
+    });
+    
+    const uniqueStates = new Set(dfa.states);
+    const hasDuplicates = uniqueStates.size !== dfa.states.length;
+    
+    if (hasNegativeIds) {
+      console.error("⚠️ ALERTA: Se detectaron IDs negativos en el DFA del backend!");
+      console.error("Estados:", dfa.states);
+    }
+    
+    if (hasDuplicates) {
+      console.error("⚠️ ALERTA: Se detectaron IDs duplicados en el DFA del backend!");
+      console.error("Estados:", dfa.states);
+      console.error("Estados únicos:", Array.from(uniqueStates));
+    }
+    console.log("===============================================");
+    
     const jflapXml = JFLAPExporter.exportToJFLAP(dfa);
     const fileName = JFLAPExporter.generateFileName(regex);
     

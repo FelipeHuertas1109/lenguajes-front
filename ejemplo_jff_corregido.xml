@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--Created with Regex to DFA Converter-->
+<!--
+  Ejemplo de archivo JFF CORREGIDO
+  Expresión regular: a|b
+  
+  ✅ CORRECCIÓN: Ahora usa IDs numéricos (0, 1, 2...)
+  ✅ Los nombres descriptivos se mantienen en el atributo "name"
+-->
+<structure>
+  <type>fa</type>
+  <automaton>
+    <!-- ✅ CORRECTO: id="0" (numérico), name="S0" (descriptivo) -->
+    <state id="0" name="S0">
+      <x>250.00</x>
+      <y>100.00</y>
+      <initial/>
+    </state>
+    <state id="1" name="S1">
+      <x>400.00</x>
+      <y>100.00</y>
+      <final/>
+    </state>
+    <state id="2" name="S2">
+      <x>400.00</x>
+      <y>250.00</y>
+      <final/>
+    </state>
+    
+    <!-- ✅ CORRECTO: Transiciones con IDs numéricos -->
+    <transition>
+      <from>0</from>
+      <to>1</to>
+      <read>a</read>
+    </transition>
+    <transition>
+      <from>0</from>
+      <to>2</to>
+      <read>b</read>
+    </transition>
+  </automaton>
+</structure>
+
